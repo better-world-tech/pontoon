@@ -55,6 +55,7 @@ export default class MachineryAPI extends APIBase {
      */
     async getGoogleTranslation(source: string, locale: Locale, sourceLocale: Locale): Promise<Translations> {
         const url = '/google-translate/';
+        console.log('sourceLocale', sourceLocale);
         const params = {
             text: source,
             locale: locale.googleTranslateCode,
