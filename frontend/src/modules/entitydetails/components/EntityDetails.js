@@ -113,7 +113,7 @@ export class EntityDetailsBase extends React.Component<InternalProps, State> {
                 }
             })
         }
-        return selected, baseLocale;
+        return [selected, baseLocale];
     }
 
     /*
