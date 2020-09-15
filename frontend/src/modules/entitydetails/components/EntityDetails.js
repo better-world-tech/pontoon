@@ -137,6 +137,7 @@ export class EntityDetailsBase extends React.Component<InternalProps, State> {
         }
 
         console.log('inhere, ', selectedEntity, this.props.otherlocales)
+        console.log('props', this.props);
         // const source = utils.getOptimizedContent(selectedEntity.machinery_original, selectedEntity.format);
         const [machineryOriginal, machineryOriginalLocale] = this.selectOriginal(selectedEntity);
         const source = utils.getOptimizedContent(machineryOriginal, selectedEntity.format);
