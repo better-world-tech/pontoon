@@ -102,11 +102,11 @@ export class EntityDetailsBase extends React.Component<InternalProps, State> {
 
     selectOriginal(entity) {
         const baseLocales = ['fr'];
-        const { otherLocales } = this.props;
+        const { otherlocales } = this.props;
         let selected = entity.machinery_original
         let baseLocale = null;
-        if (otherLocales && otherLocales.tranlations && otherLocales.tranlations.other) {
-            otherLocales.tranlations.other.forEach(({ locale, translation }) => {
+        if (otherlocales && otherlocales.tranlations && otherlocales.tranlations.other) {
+            otherlocales.tranlations.other.forEach(({ locale, translation }) => {
                 if (baseLocales.includes(locale.code)) {
                     selected = translation;
                     baseLocale = locale.code;
@@ -136,7 +136,7 @@ export class EntityDetailsBase extends React.Component<InternalProps, State> {
             dispatch(history.actions.get(parameters.entity, parameters.locale, pluralForm));
         }
 
-        console.log('inhere, ', selectedEntity, this.props.otherLocales)
+        console.log('inhere, ', selectedEntity, this.props.otherlocales)
         // const source = utils.getOptimizedContent(selectedEntity.machinery_original, selectedEntity.format);
         const [machineryOriginal, machineryOriginalLocale] = this.selectOriginal(selectedEntity);
         const source = utils.getOptimizedContent(machineryOriginal, selectedEntity.format);
