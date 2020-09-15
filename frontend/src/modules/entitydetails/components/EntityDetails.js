@@ -105,8 +105,11 @@ export class EntityDetailsBase extends React.Component<InternalProps, State> {
         const { otherlocales } = this.props;
         let selected = entity.machinery_original
         let baseLocale = null;
+        console.log('do iter'), otherlocales);
         if (otherlocales && otherlocales.tranlations && otherlocales.tranlations.other) {
+            console.log('otherlocales.tranlations.other', otherlocales.tranlations.other);
             otherlocales.tranlations.other.forEach(({ locale, translation }) => {
+                console.log('iteration, ', translation, translation);
                 if (baseLocales.includes(locale.code)) {
                     selected = translation;
                     baseLocale = locale.code;
