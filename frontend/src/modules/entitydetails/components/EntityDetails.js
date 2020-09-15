@@ -100,6 +100,22 @@ export class EntityDetailsBase extends React.Component<InternalProps, State> {
         }
     }
 
+    selectOriginal(entity) {
+        const baseLocales = ['fr'];
+        const { otherLocales } = this.props;
+        let selected = entity.machinery_original
+        let baseLocale = null;
+        if (otherLocales.tranlations && otherLocales.tranlations.other) {
+            otherLocales.tranlations.other.forEach(({ locale, translation }) => {
+                if baseLocales.includes(locale.code) {
+                    selected = translation;
+                    baseLocale = locale.code;
+                }
+            })
+        }
+        return selected, baseLocale;
+    }
+
     /*
      * Only fetch helpers data if the entity changes.
      * Also fetch history data if the pluralForm changes.
@@ -120,7 +136,11 @@ export class EntityDetailsBase extends React.Component<InternalProps, State> {
             dispatch(history.actions.get(parameters.entity, parameters.locale, pluralForm));
         }
 
-        const source = utils.getOptimizedContent(selectedEntity.machinery_original, selectedEntity.format);
+        console.log('inhere, ', selectedEntity)
+        // const source = utils.getOptimizedContent(selectedEntity.machinery_original, selectedEntity.format);
+        const machineryOriginal, machineryOriginalLocale = this.selectOriginal(selectedEntity);
+        const source = utils.getOptimizedContent(machineryOriginal, selectedEntity.format);
+        console.log('source is ', source, machineryOriginalLocale);
 
         if (source !== this.props.terms.sourceString && parameters.project !== 'terminology') {
             dispatch(terms.actions.get(source, parameters.locale));
