@@ -112,7 +112,7 @@ export class EntityDetailsBase extends React.Component<InternalProps, State> {
                 console.log('iteration, ', translation, translation);
                 if (baseLocales.includes(locale.code)) {
                     selected = translation;
-                    baseLocale = locale.code;
+                    baseLocale = locale;
                 }
             })
         }
@@ -142,16 +142,16 @@ export class EntityDetailsBase extends React.Component<InternalProps, State> {
         console.log('inhere, ', selectedEntity, this.props.otherlocales)
         console.log('props', this.props);
         // const source = utils.getOptimizedContent(selectedEntity.machinery_original, selectedEntity.format);
-        const [machineryOriginal, machineryOriginalLocale] = this.selectOriginal(selectedEntity);
+        const [machineryOriginal, sourceLocale] = this.selectOriginal(selectedEntity);
         const source = utils.getOptimizedContent(machineryOriginal, selectedEntity.format);
-        console.log('source is ', source, machineryOriginalLocale);
+        console.log('source is ', source, sourceLocale);
 
         if (source !== this.props.terms.sourceString && parameters.project !== 'terminology') {
             dispatch(terms.actions.get(source, parameters.locale));
         }
 
         if (selectedEntity.pk !== this.props.machinery.entity) {
-            dispatch(machinery.actions.get(source, locale, selectedEntity.pk));
+            dispatch(machinery.actions.get(source, locale, selectedEntity.pk, sourceLocale));
         }
 
         if (selectedEntity.pk !== this.props.otherlocales.entity) {

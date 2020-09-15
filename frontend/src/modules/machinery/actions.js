@@ -58,7 +58,7 @@ export function reset(
  *  - Transvision (if enabled for the locale)
  *  - Caighdean (if enabled for the locale)
  */
-export function get(source: string, locale: Locale, pk: ?number): Function {
+export function get(source: string, locale: Locale, pk: ?number, sourceLocale: ?Locale): Function {
     return async dispatch => {
         dispatch(reset(pk, source));
 
@@ -68,7 +68,7 @@ export function get(source: string, locale: Locale, pk: ?number): Function {
         api.machinery.getTranslationMemory(source, locale, pk)
         .then(results => dispatch(addTranslations(results)));
 
-        api.machinery.getGoogleTranslation(source, locale)
+        api.machinery.getGoogleTranslation(source, locale, sourceLocale)
         .then(results => dispatch(addTranslations(results)));
 
         api.machinery.getMicrosoftTranslation(source, locale)

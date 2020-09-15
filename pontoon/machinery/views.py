@@ -137,6 +137,7 @@ def google_translate(request):
     try:
         text = request.GET["text"]
         locale_code = request.GET["locale"]
+        source_code = request.GET.get("source", "en")
     except MultiValueDictKeyError as e:
         return JsonResponse(
             {"status": False, "message": "Bad Request: {error}".format(error=e)},
@@ -153,7 +154,7 @@ def google_translate(request):
             status=404,
         )
 
-    data = get_google_translate_data(text, locale_code)
+    data = get_google_translate_data(text, locale_code, source_code)
 
     if not data["status"]:
         return JsonResponse(data, status=400)

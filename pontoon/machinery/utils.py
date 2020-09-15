@@ -12,7 +12,7 @@ log = logging.getLogger(__name__)
 MAX_RESULTS = 5
 
 
-def get_google_translate_data(text, locale_code):
+def get_google_translate_data(text, locale_code, source_code):
     api_key = settings.GOOGLE_TRANSLATE_API_KEY
 
     if not api_key:
@@ -26,7 +26,7 @@ def get_google_translate_data(text, locale_code):
 
     payload = {
         "q": text,
-        "source": "fr",
+        "source": source_code,
         "target": locale_code,
         "format": "text",
         "key": api_key,
