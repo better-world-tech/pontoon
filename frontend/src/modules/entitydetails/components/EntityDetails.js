@@ -138,7 +138,7 @@ export class EntityDetailsBase extends React.Component<InternalProps, State> {
 
         console.log('inhere, ', selectedEntity)
         // const source = utils.getOptimizedContent(selectedEntity.machinery_original, selectedEntity.format);
-        const machineryOriginal, machineryOriginalLocale = this.selectOriginal(selectedEntity);
+        const [machineryOriginal, machineryOriginalLocale] = this.selectOriginal(selectedEntity);
         const source = utils.getOptimizedContent(machineryOriginal, selectedEntity.format);
         console.log('source is ', source, machineryOriginalLocale);
 
