@@ -93,12 +93,16 @@ export class EntityDetailsBase extends React.Component<InternalProps, State> {
             (
                 selectedEntity === nextEntity &&
                 activeTranslationString !== prevProps.activeTranslationString
-            ) || (
-                selectedEntity.pk !== this.props.otherlocales.entity
             )
         ) {
+            console.log('others!')
             this.updateFailedChecks();
             this.fetchHelpersData();
+        }
+        console.log('machin?', selectedEntity.pk !== this.props.otherlocales.entity, selectedEntity.pk, this.props.otherlocales.entity)
+        if (selectedEntity.pk !== this.props.otherlocales.entity) {
+            console.log('machin!')
+            this.fetchMachineryData();
         }
     }
 
@@ -119,6 +123,15 @@ export class EntityDetailsBase extends React.Component<InternalProps, State> {
             })
         }
         return [selected, baseLocale];
+    }
+
+    fetchMachineryData() {
+        const { dispatch, locale, nextEntity, parameters, pluralForm, selectedEntity } = this.props;
+
+        const [machineryOriginal, sourceLocale] = this.selectOriginal(selectedEntity);
+        const optimizedMachineryOriginal = utils.getOptimizedContent(machineryOriginal, selectedEntity.format);
+        console.log('source is ', optimizedMachineryOriginal, sourceLocale);
+        dispatch(machinery.actions.get(optimizedMachineryOriginal, locale, selectedEntity.pk, sourceLocale));
     }
 
     /*
@@ -149,13 +162,13 @@ export class EntityDetailsBase extends React.Component<InternalProps, State> {
 
         if (selectedEntity.pk !== this.props.otherlocales.entity) {
             dispatch(otherlocales.actions.get(parameters.entity, parameters.locale));
-        } else if (selectedEntity.pk !== this.props.machinery.entity ) {
-            const [machineryOriginal, sourceLocale] = this.selectOriginal(selectedEntity);
-            const optimizedMachineryOriginal = utils.getOptimizedContent(machineryOriginal, selectedEntity.format);
-            console.log('source is ', optimizedMachineryOriginal, sourceLocale);
-            dispatch(machinery.actions.get(optimizedMachineryOriginal, locale, selectedEntity.pk, sourceLocale));
         }
-
+        // else if (selectedEntity.pk !== this.props.machinery.entity ) {
+        //     const [machineryOriginal, sourceLocale] = this.selectOriginal(selectedEntity);
+        //     const optimizedMachineryOriginal = utils.getOptimizedContent(machineryOriginal, selectedEntity.format);
+        //     console.log('source is ', optimizedMachineryOriginal, sourceLocale);
+        //     dispatch(machinery.actions.get(optimizedMachineryOriginal, locale, selectedEntity.pk, sourceLocale));
+        // }
         if (selectedEntity.pk !== this.props.teamComments.entity) {
             dispatch(teamcomments.actions.request(parameters.entity));
             dispatch(teamcomments.actions.get(parameters.entity, parameters.locale));
