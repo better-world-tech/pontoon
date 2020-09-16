@@ -85,7 +85,7 @@ export class EntityDetailsBase extends React.Component<InternalProps, State> {
     }
 
     componentDidUpdate(prevProps: InternalProps) {
-        const { activeTranslationString, nextEntity, pluralForm, selectedEntity } = this.props;
+        const { activeTranslationString, nextEntity, pluralForm, selectedEntity, otherlocales, machinery } = this.props;
 
         if (
             pluralForm !== prevProps.pluralForm ||
@@ -99,8 +99,9 @@ export class EntityDetailsBase extends React.Component<InternalProps, State> {
             this.updateFailedChecks();
             this.fetchHelpersData();
         }
-        console.log('machin?', selectedEntity.pk !== this.props.otherlocales.entity, selectedEntity.pk, this.props.otherlocales.entity)
-        if (selectedEntity.pk !== this.props.otherlocales.entity) {
+        console.log('machin?', selectedEntity.pk === otherlocales.entity && (!machinery || selectedEntity.pk !== machinery.entity),
+        selectedEntity.pk, otherlocales.entity, machinery)
+        if (selectedEntity.pk === otherlocales.entity && (!machinery || selectedEntity.pk !== machinery.entity)) {
             console.log('machin!')
             this.fetchMachineryData();
         }
