@@ -100,8 +100,8 @@ export class EntityDetailsBase extends React.Component<InternalProps, State> {
             this.fetchHelpersData();
         }
         console.log('machin?', selectedEntity.pk === otherlocales.entity && (!machinery || selectedEntity.pk !== machinery.entity),
-        selectedEntity.pk, otherlocales.entity, machinery)
-        if (selectedEntity.pk === otherlocales.entity && (!machinery || selectedEntity.pk !== machinery.entity)) {
+        selectedEntity.pk, otherlocales.entity, machinery, otherlocales)
+        if (selectedEntity.pk === otherlocales.entity && !otherlocales.entity.fetching && (!machinery || selectedEntity.pk !== machinery.entity)) {
             console.log('machin!')
             this.fetchMachineryData();
         }
