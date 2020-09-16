@@ -93,6 +93,8 @@ export class EntityDetailsBase extends React.Component<InternalProps, State> {
             (
                 selectedEntity === nextEntity &&
                 activeTranslationString !== prevProps.activeTranslationString
+            ) || (
+                selectedEntity.pk !== this.props.otherlocales.entity
             )
         ) {
             this.updateFailedChecks();
@@ -139,9 +141,7 @@ export class EntityDetailsBase extends React.Component<InternalProps, State> {
             dispatch(history.actions.get(parameters.entity, parameters.locale, pluralForm));
         }
 
-        // const source = utils.getOptimizedContent(selectedEntity.machinery_original, selectedEntity.format);
-        const [machineryOriginal, sourceLocale] = this.selectOriginal(selectedEntity);
-        const source = utils.getOptimizedContent(machineryOriginal, selectedEntity.format);
+        const source = utils.getOptimizedContent(selectedEntity.machinery_original, selectedEntity.format);
 
         if (source !== this.props.terms.sourceString && parameters.project !== 'terminology') {
             dispatch(terms.actions.get(source, parameters.locale));
@@ -150,9 +150,10 @@ export class EntityDetailsBase extends React.Component<InternalProps, State> {
         if (selectedEntity.pk !== this.props.otherlocales.entity) {
             dispatch(otherlocales.actions.get(parameters.entity, parameters.locale));
         } else if (selectedEntity.pk !== this.props.machinery.entity ) {
-
-            console.log('source is ', source, sourceLocale);
-            dispatch(machinery.actions.get(source, locale, selectedEntity.pk, sourceLocale));
+            const [machineryOriginal, sourceLocale] = this.selectOriginal(selectedEntity);
+            const optimizedMachineryOriginal = utils.getOptimizedContent(machineryOriginal, selectedEntity.format);
+            console.log('source is ', optimizedMachineryOriginal, sourceLocale);
+            dispatch(machinery.actions.get(optimizedMachineryOriginal, locale, selectedEntity.pk, sourceLocale));
         }
 
         if (selectedEntity.pk !== this.props.teamComments.entity) {
