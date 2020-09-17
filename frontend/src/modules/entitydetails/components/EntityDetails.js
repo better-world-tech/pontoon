@@ -95,14 +95,11 @@ export class EntityDetailsBase extends React.Component<InternalProps, State> {
                 activeTranslationString !== prevProps.activeTranslationString
             )
         ) {
-            console.log('others!')
             this.updateFailedChecks();
             this.fetchHelpersData();
         }
-        console.log('machin?', selectedEntity.pk === otherlocales.entity && (!machinery || selectedEntity.pk !== machinery.entity),
         selectedEntity.pk, otherlocales.entity, machinery, otherlocales)
         if (selectedEntity.pk === otherlocales.entity && !otherlocales.fetching && (!machinery || selectedEntity.pk !== machinery.entity)) {
-            console.log('machin!')
             this.fetchMachineryData();
         }
     }
@@ -112,11 +109,8 @@ export class EntityDetailsBase extends React.Component<InternalProps, State> {
         const { otherlocales } = this.props;
         let selected = entity.machinery_original
         let baseLocale = null;
-        console.log('do iter', otherlocales, otherlocales.translations, otherlocales.translations && otherlocales.translations.other);
         if (otherlocales && otherlocales.translations && otherlocales.translations.other) {
-            console.log('otherlocales.translations.other', otherlocales.translations.other);
             otherlocales.translations.other.forEach(({ locale, translation }) => {
-                console.log('iteration, ', translation, translation);
                 if (baseLocales.includes(locale.code)) {
                     selected = translation;
                     baseLocale = locale;
@@ -131,7 +125,6 @@ export class EntityDetailsBase extends React.Component<InternalProps, State> {
 
         const [machineryOriginal, sourceLocale] = this.selectOriginal(selectedEntity);
         const optimizedMachineryOriginal = utils.getOptimizedContent(machineryOriginal, selectedEntity.format);
-        console.log('source is ', optimizedMachineryOriginal, sourceLocale);
         dispatch(machinery.actions.get(optimizedMachineryOriginal, locale, selectedEntity.pk, sourceLocale));
     }
 
@@ -167,7 +160,6 @@ export class EntityDetailsBase extends React.Component<InternalProps, State> {
         // else if (selectedEntity.pk !== this.props.machinery.entity ) {
         //     const [machineryOriginal, sourceLocale] = this.selectOriginal(selectedEntity);
         //     const optimizedMachineryOriginal = utils.getOptimizedContent(machineryOriginal, selectedEntity.format);
-        //     console.log('source is ', optimizedMachineryOriginal, sourceLocale);
         //     dispatch(machinery.actions.get(optimizedMachineryOriginal, locale, selectedEntity.pk, sourceLocale));
         // }
         if (selectedEntity.pk !== this.props.teamComments.entity) {

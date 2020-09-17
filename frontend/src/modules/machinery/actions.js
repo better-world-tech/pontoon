@@ -61,7 +61,6 @@ export function reset(
 export function get(source: string, locale: Locale, pk: ?number, sourceLocale: ?Locale): Function {
     return async dispatch => {
         dispatch(reset(pk, source));
-        console.log('async', sourceLocale)
 
         // Abort all previously running requests.
         await api.machinery.abort();
