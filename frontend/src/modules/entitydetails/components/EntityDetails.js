@@ -98,8 +98,13 @@ export class EntityDetailsBase extends React.Component<InternalProps, State> {
             this.updateFailedChecks();
             this.fetchHelpersData();
         }
-        if (selectedEntity.pk === otherlocales.entity && !otherlocales.fetching && (!machinery || selectedEntity.pk !== machinery.entity)) {
-            this.fetchMachineryData();
+        if (
+          selectedEntity &&
+          selectedEntity.pk === otherlocales.entity &&
+          !otherlocales.fetching &&
+          (!machinery || selectedEntity.pk !== machinery.entity)
+        ) {
+          this.fetchMachineryData();
         }
     }
 
