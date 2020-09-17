@@ -98,7 +98,6 @@ export class EntityDetailsBase extends React.Component<InternalProps, State> {
             this.updateFailedChecks();
             this.fetchHelpersData();
         }
-        selectedEntity.pk, otherlocales.entity, machinery, otherlocales)
         if (selectedEntity.pk === otherlocales.entity && !otherlocales.fetching && (!machinery || selectedEntity.pk !== machinery.entity)) {
             this.fetchMachineryData();
         }
@@ -125,7 +124,7 @@ export class EntityDetailsBase extends React.Component<InternalProps, State> {
 
         const [machineryOriginal, sourceLocale] = this.selectOriginal(selectedEntity);
         const optimizedMachineryOriginal = utils.getOptimizedContent(machineryOriginal, selectedEntity.format);
-        dispatch(machinery.actions.get(optimizedMachineryOriginal, locale, selectedEntity.pk, sourceLocale));
+        dispatch(machinery.actions.get(optimizedMachineryOriginal, locale, selectedEntity.pk, sourceLocale.code));
     }
 
     /*
@@ -210,7 +209,7 @@ export class EntityDetailsBase extends React.Component<InternalProps, State> {
             pk = selectedEntity.pk;
         }
 
-        dispatch(machinery.actions.get(source, locale, pk));
+        dispatch(machinery.actions.get(source, locale, pk, "en"));
     }
 
     copyLinkToClipboard = () => {

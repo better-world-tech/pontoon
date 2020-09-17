@@ -53,12 +53,12 @@ export default class MachineryAPI extends APIBase {
     /**
      * Return translation by Google Translate.
      */
-    async getGoogleTranslation(source: string, locale: Locale, sourceLocale: Locale): Promise<Translations> {
+    async getGoogleTranslation(source: string, locale: Locale, sourceLocaleCode: ?string): Promise<Translations> {
         const url = '/google-translate/';
         const params = {
             text: source,
             locale: locale.googleTranslateCode,
-            source: sourceLocale.code,
+            source: sourceLocaleCode,
         };
 
         const result = await this._get(url, params);
