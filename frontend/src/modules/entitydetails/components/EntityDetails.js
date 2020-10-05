@@ -101,7 +101,9 @@ export class EntityDetailsBase extends React.Component<InternalProps, State> {
         if (
           selectedEntity &&
           selectedEntity.pk === otherlocales.entity &&
-          !otherlocales.fetching && otherlocales.translations && otherlocales.translations.other &&
+          !otherlocales.fetching &&
+          otherlocales.translations &&
+          otherlocales.translations.other && otherlocales.translations.other.length &&
           (!machinery || selectedEntity.pk !== machinery.entity)
         ) {
             console.log('do fetch', selectedEntity, otherlocales, machinery);
