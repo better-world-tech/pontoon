@@ -104,7 +104,8 @@ export class EntityDetailsBase extends React.Component<InternalProps, State> {
           !otherlocales.fetching &&
           (!machinery || selectedEntity.pk !== machinery.entity)
         ) {
-          this.fetchMachineryData();
+            console.log('do fetch', selectedEntity, otherlocales, machinery);
+            this.fetchMachineryData();
         }
     }
 
@@ -128,6 +129,7 @@ export class EntityDetailsBase extends React.Component<InternalProps, State> {
         const { dispatch, locale, nextEntity, parameters, pluralForm, selectedEntity } = this.props;
 
         const [machineryOriginal, sourceLocale] = this.selectOriginal(selectedEntity);
+        console.log('machinery ', machineryOriginal, sourceLocale)
         const optimizedMachineryOriginal = utils.getOptimizedContent(machineryOriginal, selectedEntity.format);
         dispatch(machinery.actions.get(optimizedMachineryOriginal, locale, selectedEntity.pk, sourceLocale.code));
     }
