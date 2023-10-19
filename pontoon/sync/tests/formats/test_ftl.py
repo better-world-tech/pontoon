@@ -1,47 +1,48 @@
-from __future__ import absolute_import
-
 import os
 import shutil
 import tempfile
 
 from textwrap import dedent
 
-from django_nose.tools import (
-    assert_equal,
-    assert_false,
-    assert_raises,
-    assert_true,
-)
+import pytest
 from pontoon.base.tests import (
     assert_attributes_equal,
     create_named_tempfile,
     LocaleFactory,
     TestCase,
 )
+from pontoon.sync.exceptions import ParseError
 from pontoon.sync.formats import ftl
 from pontoon.sync.tests.formats import FormatTestsMixin
 
 
 class FTLResourceTests(FormatTestsMixin, TestCase):
     def setUp(self):
-        super(FTLResourceTests, self).setUp()
+        super().setUp()
         self.tempdir = tempfile.mkdtemp()
 
     def tearDown(self):
-        super(FTLResourceTests, self).tearDown()
+        super().tearDown()
         shutil.rmtree(self.tempdir)
 
     def get_nonexistant_file_resource(self, path):
         contents = "text = Arise, awake and do not stop until the goal is reached."
 
         source_path = create_named_tempfile(
-            contents, prefix="strings", suffix=".ftl", directory=self.tempdir,
+            contents,
+            prefix="strings",
+            suffix=".ftl",
+            directory=self.tempdir,
         )
         source_resource = ftl.FTLResource(
             path=source_path, locale=None, source_resource=None
         )
 
-        return ftl.FTLResource(path, locale=None, source_resource=source_resource,)
+        return ftl.FTLResource(
+            path,
+            locale=None,
+            source_resource=source_resource,
+        )
 
     def get_nonexistant_file_path(self):
         return os.path.join(self.tempdir, "strings.ftl")
@@ -49,10 +50,10 @@ class FTLResourceTests(FormatTestsMixin, TestCase):
     def test_init_missing_resource(self):
         """
         If the FTLResource file doesn't exist and no source resource is
-        given, raise a IOError.
+        given, raise a ParseError.
         """
         path = self.get_nonexistant_file_path()
-        with assert_raises(IOError):
+        with pytest.raises(ParseError):
             ftl.FTLResource(path, locale=None, source_resource=None)
 
     def test_init_missing_resource_with_source(self):
@@ -63,9 +64,8 @@ class FTLResourceTests(FormatTestsMixin, TestCase):
         path = self.get_nonexistant_file_path()
         translated_resource = self.get_nonexistant_file_resource(path)
 
-        assert_equal(len(translated_resource.translations), 1)
-        translation = translated_resource.translations[0]
-        assert_equal(translation.strings, {})
+        assert len(translated_resource.translations) == 1
+        assert translated_resource.translations[0].strings == {}
 
     def test_save_create_dirs(self):
         """
@@ -77,31 +77,37 @@ class FTLResourceTests(FormatTestsMixin, TestCase):
 
         translated_resource.translations[0].strings = {None: "New Translated String"}
 
-        assert_false(os.path.exists(path))
+        assert not os.path.exists(path)
         translated_resource.save(LocaleFactory.create())
-        assert_true(os.path.exists(path))
+        assert os.path.exists(path)
 
     def test_parse_with_source_path(self):
         contents = "text = Arise, awake and do not stop until the goal is reached."
         source_path = create_named_tempfile(
-            contents, prefix="strings", suffix=".ftl", directory=self.tempdir,
+            contents,
+            prefix="strings",
+            suffix=".ftl",
+            directory=self.tempdir,
         )
         path = self.get_nonexistant_file_path()
         obj = ftl.parse(path, source_path=source_path, locale=None)
-        assert_equal(obj.path, path)
-        assert_equal(obj.locale, None)
-        assert_equal(obj.source_resource.path, source_path)
-        assert_equal(obj.source_resource.locale, None)
+        assert obj.path == path
+        assert obj.locale is None
+        assert obj.source_resource.path == source_path
+        assert obj.source_resource.locale is None
 
     def test_parse_with_no_source_path(self):
         contents = "text = Arise, awake and do not stop until the goal is reached."
         path = create_named_tempfile(
-            contents, prefix="strings", suffix=".ftl", directory=self.tempdir,
+            contents,
+            prefix="strings",
+            suffix=".ftl",
+            directory=self.tempdir,
         )
         obj = ftl.parse(path, source_path=None, locale=None)
-        assert_equal(obj.path, path)
-        assert_equal(obj.source_resource, None)
-        assert_equal(obj.locale, None)
+        assert obj.path == path
+        assert obj.source_resource is None
+        assert obj.locale is None
 
 
 BASE_FTL_FILE = """
@@ -123,16 +129,16 @@ class FTLTests(FormatTestsMixin, TestCase):
     supports_source_string = False
 
     def setUp(self):
-        super(FTLTests, self).setUp()
+        super().setUp()
         self.tempdir = tempfile.mkdtemp()
 
     def tearDown(self):
-        super(FTLTests, self).tearDown()
+        super().tearDown()
         shutil.rmtree(self.tempdir)
 
     def key(self, source_string):
         """FTL keys can't contain spaces."""
-        return super(FTLTests, self).key(source_string).replace(" ", "")
+        return super().key(source_string).replace(" ", "")
 
     def test_parse_basic(self):
         input_string = BASE_FTL_FILE

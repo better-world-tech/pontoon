@@ -1,20 +1,29 @@
-$(function() {
-
+$(function () {
   // Before submitting the form
   $('#admin-form').submit(function () {
     // Update locales
-    var locales = [{
-      list: 'selected',
-      input: $('#id_locales'),
-    }, {
-      list: 'readonly',
-      input: $('#id_locales_readonly'),
-    }];
+    var locales = [
+      {
+        selector: '.admin-team-selector .locale.selected',
+        input: $('#id_locales'),
+      },
+      {
+        selector: '.admin-team-selector .locale.readonly',
+        input: $('#id_locales_readonly'),
+      },
+      {
+        selector: '.multiple-team-selector .locale.selected',
+        input: $('#id_locales_pretranslate'),
+      },
+    ];
 
-    locales.forEach(function(type) {
-      var ids = $('.admin-team-selector .locale.' + type.list).find('li[data-id]').map(function() {
-        return $(this).data('id');
-      }).get();
+    locales.forEach(function (type) {
+      var ids = $(type.selector)
+        .find('li[data-id]')
+        .map(function () {
+          return $(this).data('id');
+        })
+        .get();
       type.input.val(ids);
     });
 
@@ -23,35 +32,45 @@ $(function() {
     if (slug.length > 0) {
       slug += '/';
     }
-    $('#admin-form').attr('action', $('#admin-form').attr('action').split('/projects/')[0] + '/projects/' + slug);
+    $('#admin-form').attr(
+      'action',
+      $('#admin-form').attr('action').split('/projects/')[0] +
+        '/projects/' +
+        slug,
+    );
   });
 
-  // Submit form with Enter
-  $('html').unbind("keydown.pontoon").bind("keydown.pontoon", function (e) {
-    if ($('input[type=text]:focus').length > 0 || $('input[type=url]:focus').length > 0) {
-      var key = e.keyCode || e.which;
-      if (key === 13) { // Enter
-        // A short delay to allow digest of autocomplete before submit
-        setTimeout(function() {
-          $('#admin-form').submit();
-        }, 1);
-        return false;
+  // Submit form with Enter (keyCode === 13)
+  $('html')
+    .unbind('keydown.pontoon')
+    .bind('keydown.pontoon', function (e) {
+      if (
+        $('input[type=text]:focus').length > 0 ||
+        $('input[type=url]:focus').length > 0
+      ) {
+        var key = e.keyCode || e.which;
+        if (key === 13) {
+          // A short delay to allow digest of autocomplete before submit
+          setTimeout(function () {
+            $('#admin-form').submit();
+          }, 1);
+          return false;
+        }
       }
-    }
-  });
+    });
 
   // Submit form with button
-  $('.save').click(function(e) {
+  $('.save').click(function (e) {
     e.preventDefault();
     $('#admin-form').submit();
   });
 
   // Manually Sync project
-  $('.sync').click(function(e) {
+  $('.sync').click(function (e) {
     e.preventDefault();
 
     var button = $(this),
-        title = button.html();
+      title = button.html();
 
     if (button.is('.in-progress')) {
       return;
@@ -60,24 +79,27 @@ $(function() {
     button.addClass('in-progress').html('Syncing...');
 
     $.ajax({
-      url: '/admin/projects/' + $('#id_slug').val() + '/sync/'
-    }).success(function() {
-      button.html('Started');
-    }).error(function() {
-      button.html('Whoops!');
-    }).complete(function() {
-      setTimeout(function() {
-        button.removeClass('in-progress').html(title);
-      }, 2000);
+      url: '/admin/projects/' + $('#id_slug').val() + '/sync/',
+      success: function () {
+        button.html('Started');
+      },
+      error: function () {
+        button.html('Whoops!');
+      },
+      complete: function () {
+        setTimeout(function () {
+          button.removeClass('in-progress').html(title);
+        }, 2000);
+      },
     });
   });
 
   // Manually Pretranslate project
-  $('.pretranslate').click(function(e) {
+  $('.pretranslate').click(function (e) {
     e.preventDefault();
 
     var button = $(this),
-        title = button.html();
+      title = button.html();
 
     if (button.is('.in-progress')) {
       return;
@@ -86,20 +108,23 @@ $(function() {
     button.addClass('in-progress').html('Pretranslating...');
 
     $.ajax({
-      url: '/admin/projects/' + $('#id_slug').val() + '/pretranslate/'
-    }).success(function() {
-      button.html('Started');
-    }).error(function() {
-      button.html('Whoops!');
-    }).complete(function() {
-      setTimeout(function() {
-        button.removeClass('in-progress').html(title);
-      }, 2000);
+      url: '/admin/projects/' + $('#id_slug').val() + '/pretranslate/',
+      success: function () {
+        button.html('Started');
+      },
+      error: function () {
+        button.html('Whoops!');
+      },
+      complete: function () {
+        setTimeout(function () {
+          button.removeClass('in-progress').html(title);
+        }, 2000);
+      },
     });
   });
 
   // Suggest slugified name for new projects
-  $('#id_name').blur(function() {
+  $('#id_name').blur(function () {
     if ($('input[name=pk]').length > 0 || !$('#id_name').val()) {
       return;
     }
@@ -107,19 +132,19 @@ $(function() {
     $.ajax({
       url: '/admin/get-slug/',
       data: {
-        name: $('#id_name').val()
+        name: $('#id_name').val(),
       },
-      success: function(data) {
-        var value = (data === "error") ? "" : data;
+      success: function (data) {
+        var value = data === 'error' ? '' : data;
         $('#id_slug').val(value);
       },
-      error: function() {
+      error: function () {
         $('#id_slug').attr('placeholder', '');
-      }
+      },
     });
   });
 
-  $("body").on("blur", "[id^=id_tag_set-][id$=-name]", function() {
+  $('body').on('blur', '[id^=id_tag_set-][id$=-name]', function () {
     var target = $('input#' + $(this).attr('id').replace('-name', '-slug'));
     var $this = this;
     if (target.val() || !$(this).val()) {
@@ -129,26 +154,26 @@ $(function() {
     $.ajax({
       url: '/admin/get-slug/',
       data: {
-        name: $($this).val()
+        name: $($this).val(),
       },
-      success: function(data) {
-        var value = (data === "error") ? "" : data;
+      success: function (data) {
+        var value = data === 'error' ? '' : data;
         target.val(value);
         target.attr('placeholder', '');
       },
-      error: function() {
+      error: function () {
         target.attr('placeholder', '');
-      }
+      },
     });
   });
 
   // Copy locales from another project
-  $('#copy-locales option').on('click', function() {
+  $('#copy-locales option').on('click', function () {
     var projectLocales = [];
 
     try {
       projectLocales = JSON.parse($(this).val());
-    } catch(error) {
+    } catch (error) {
       // No project selected
       return;
     }
@@ -156,8 +181,10 @@ $(function() {
     $('.readonly .move-all').click();
     $('.selected .move-all.left').click();
 
-    $(projectLocales).each(function(i, id) {
-      $('.locale.select:first').find('[data-id=' + id + ']').click();
+    $(projectLocales).each(function (i, id) {
+      $('.locale.select:first')
+        .find('[data-id=' + id + ']')
+        .click();
     });
   });
 
@@ -170,8 +197,7 @@ $(function() {
       // For now, we also hide the entire Repositories section. We might
       // want to revisit that behavior later.
       $('.repositories').hide();
-    }
-    else {
+    } else {
       $('.new-strings').hide();
       $('.manage-strings').hide();
       $('.repositories').show();
@@ -184,8 +210,9 @@ $(function() {
   displayNewStringsInput(dataSourceInput);
 
   // Suggest public repository website URL
-  $('body').on('blur', '.repo input', function() {
-    var val = $(this).val()
+  $('body').on('blur', '.repo input', function () {
+    var val = $(this)
+      .val()
       .replace(/\.git$/, '')
       .replace('git@github.com:', 'https://github.com/')
       .replace('ssh://', 'https://');
@@ -193,7 +220,7 @@ $(function() {
     $(this).parents('.repository').find('.website-wrapper input').val(val);
   });
 
-  // Delete inline form item (e.g. subpage or external resource)
+  // Delete inline form item (e.g. external resource)
   $('body').on('click.pontoon', '.delete-inline', function (e) {
     e.preventDefault();
     $(this).parent().toggleClass('delete');
@@ -201,20 +228,23 @@ $(function() {
   });
   $('.inline [checked]').click().prev().click();
 
-  // Add inline form item (e.g. subpage or external resource)
+  // Add inline form item (e.g. external resource)
   var count = {
-    'subpage': $('.subpage:last').data('count'),
-    'externalresource': $('.externalresource:last').data('count'),
-    'entity': $('.entity:last').data('count'),
-    'tag': $('.tag:last').data('count'),
+    externalresource: $('.externalresource:last').data('count'),
+    entity: $('.entity:last').data('count'),
+    tag: $('.tag:last').data('count'),
   };
-  $('.add-inline').click(function(e) {
+  $('.add-inline').click(function (e) {
     e.preventDefault();
 
     var type = $(this).data('type');
-    var form = $('.' + type + ':last').html().replace(/__prefix__/g, count[type]);
+    var form = $('.' + type + ':last')
+      .html()
+      .replace(/__prefix__/g, count[type]);
 
-    $('.' + type + ':last').before('<div class="' + type + ' inline clearfix">' + form + '</div>');
+    $('.' + type + ':last').before(
+      '<div class="' + type + ' inline clearfix">' + form + '</div>',
+    );
     count[type]++;
 
     // These two forms of selectors cover all the cases for django-generated forms we use.
@@ -224,26 +254,30 @@ $(function() {
 
   // Toggle branch input
   function toggleBranchInput(element) {
-    $(element).parents('.repository').toggleClass('git', $(element).val() === 'git');
+    $(element)
+      .parents('.repository')
+      .toggleClass('git', $(element).val() === 'git');
   }
   // On select change
-  $('body').on('change', '.repository .type-wrapper select', function() {
+  $('body').on('change', '.repository .type-wrapper select', function () {
     toggleBranchInput(this);
   });
   // On page load
-  $('.repository .type-wrapper select').each(function() {
+  $('.repository .type-wrapper select').each(function () {
     toggleBranchInput(this);
   });
 
   // Add repo
   var $totalForms = $('#id_repositories-TOTAL_FORMS');
-  $('.add-repo').click(function(e) {
+  $('.add-repo').click(function (e) {
     e.preventDefault();
     var count = parseInt($totalForms.val(), 10);
 
     var $emptyForm = $('.repository-empty');
     var form = $emptyForm.html().replace(/__prefix__/g, count);
-    $('.repository:last').after('<div class="repository clearfix">' + form + '</div>');
+    $('.repository:last').after(
+      '<div class="repository clearfix">' + form + '</div>',
+    );
 
     toggleBranchInput($('.repository:last').find('.type-wrapper select'));
 

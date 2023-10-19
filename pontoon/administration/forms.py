@@ -1,8 +1,7 @@
-from __future__ import absolute_import
-
 from django import forms
 from django.contrib.auth.models import User
 from django.forms.models import inlineformset_factory
+from django.core.exceptions import ValidationError
 
 from pontoon.base.models import (
     Entity,
@@ -10,7 +9,6 @@ from pontoon.base.models import (
     Locale,
     Project,
     Repository,
-    Subpage,
 )
 from pontoon.base.forms import HtmlField
 from pontoon.tags.models import Tag
@@ -25,8 +23,24 @@ class ProjectForm(forms.ModelForm):
     contact = ContactChoiceField(None, required=False)
     info = HtmlField(required=False)
     locales_readonly = forms.ModelMultipleChoiceField(
-        queryset=Locale.objects.all(), required=False,
+        queryset=Locale.objects.all(),
+        required=False,
     )
+    locales = forms.ModelMultipleChoiceField(
+        queryset=Locale.objects.all(),
+        required=False,
+    )
+    locales_pretranslate = forms.ModelMultipleChoiceField(
+        queryset=Locale.objects.all(),
+        required=False,
+    )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        locales_readonly = cleaned_data.get("locales_readonly")
+        locales = cleaned_data.get("locales")
+        if not (locales or locales_readonly):
+            raise ValidationError("At least one locale must be selected.")
 
     class Meta:
         model = Project
@@ -37,9 +51,6 @@ class ProjectForm(forms.ModelForm):
             "data_source",
             "can_be_requested",
             "configuration_file",
-            "url",
-            "width",
-            "links",
             "info",
             "admin_notes",
             "deadline",
@@ -53,15 +64,10 @@ class ProjectForm(forms.ModelForm):
         )
 
     def __init__(self, *args, **kwargs):
-        super(ProjectForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.fields["contact"].queryset = User.objects.filter(
             groups__name="project_managers"
         ).order_by("email")
-
-
-SubpageInlineFormSet = inlineformset_factory(
-    Project, Subpage, extra=1, fields=("project", "name", "url")
-)
 
 
 RepositoryInlineFormSet = inlineformset_factory(
@@ -94,7 +100,9 @@ ExternalResourceInlineFormSet = inlineformset_factory(
 
 
 EntityFormSet = forms.modelformset_factory(
-    Entity, fields=("string", "comment", "obsolete"), extra=1,
+    Entity,
+    fields=("string", "comment", "obsolete"),
+    extra=1,
 )
 
 

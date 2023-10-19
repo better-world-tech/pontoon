@@ -22,7 +22,7 @@ def update_terminology_project_stats():
         [
             "total_strings",
             "approved_strings",
-            "fuzzy_strings",
+            "pretranslated_strings",
             "strings_with_errors",
             "strings_with_warnings",
             "unreviewed_strings",
@@ -52,33 +52,44 @@ class TermQuerySet(models.QuerySet):
 
         return terms
 
+    def delete(self, *args, **kwargs):
+        """
+        Before deleting Terms, obsolete their Entities
+        """
+        for term in self:
+            term.obsolete_entity()
+        update_terminology_project_stats()
+
+        super().delete(*args, **kwargs)
+
 
 class Term(models.Model):
     text = models.CharField(max_length=255)
     entity = models.OneToOneField("base.Entity", models.SET_NULL, null=True, blank=True)
 
-    PARTS_OF_SPEECH = (
-        ("adjective", "Adjective"),
-        ("adverb", "Adverb"),
-        ("noun", "Noun"),
-        ("verb", "Verb"),
-    )
-    part_of_speech = models.CharField(max_length=50, choices=PARTS_OF_SPEECH)
+    class PartOfSpeech(models.TextChoices):
+        ADJECTIVE = "adjective", "Adjective"
+        ADVERB = "adverb", "Adverb"
+        NOUN = "noun", "Noun"
+        VERB = "verb", "Verb"
+
+    part_of_speech = models.CharField(max_length=50, choices=PartOfSpeech.choices)
 
     definition = models.TextField(blank=True)
     usage = models.TextField(blank=True)
     notes = models.TextField(blank=True)
 
-    STATUSES = (
-        ("approved", "Approved"),
-        ("new", "New"),
-        ("obsolete", "Obsolete"),
-        ("review", "Review"),
+    class Status(models.TextChoices):
+        APPROVED = "approved", "Approved"
+        NEW = "new", "New"
+        OBSOLETE = "obsolete", "Obsolete"
+        REVIEW = "review", "Review"
+
+    status = models.CharField(
+        max_length=20, choices=Status.choices, null=True, blank=True
     )
-    status = models.CharField(max_length=20, choices=STATUSES, null=True, blank=True)
 
     case_sensitive = models.BooleanField(default=False)
-    exact_match = models.BooleanField(default=False)
     do_not_translate = models.BooleanField(default=False)
     forbidden = models.BooleanField(default=False)
 
@@ -122,7 +133,8 @@ class Term(models.Model):
         Generate entity comment from the term.
         """
         comment = "{}. {}.".format(
-            self.part_of_speech.capitalize(), self.definition.capitalize().rstrip("."),
+            self.part_of_speech.capitalize(),
+            self.definition.capitalize().rstrip("."),
         )
 
         if self.usage:
@@ -141,7 +153,9 @@ class Term(models.Model):
         resource = Resource.objects.get(project__slug="terminology")
 
         entity, created = Entity.objects.get_or_create(
-            string=self.text, comment=self.entity_comment(), resource=resource,
+            string=self.text,
+            comment=self.entity_comment(),
+            resource=resource,
         )
 
         # Using update() to avoid circular Term.save() call
@@ -227,7 +241,7 @@ class Term(models.Model):
         if not created:
             self.handle_term_update()
 
-        super(Term, self).save(*args, **kwargs)
+        super().save(*args, **kwargs)
 
         if created and self.localizable:
             self.handle_term_create()
@@ -239,7 +253,7 @@ class Term(models.Model):
         self.obsolete_entity()
         update_terminology_project_stats()
 
-        super(Term, self).delete(*args, **kwargs)
+        super().delete(*args, **kwargs)
 
     def __str__(self):
         return self.text

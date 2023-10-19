@@ -1,0 +1,79 @@
+.third-column .top {
+  border-bottom: 1px solid var(--light-grey-1);
+  box-sizing: border-box;
+  height: calc(40% + 21px);
+  min-height: 200px;
+}
+
+.third-column .bottom {
+  box-sizing: border-box;
+  height: calc(60% - 21px);
+}
+
+/* Styling the react-tabs library */
+.react-tabs {
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  height: 100%;
+}
+
+.react-tabs__tab-list {
+  display: table;
+  table-layout: fixed;
+  margin: 0;
+  width: 100%;
+}
+
+.react-tabs__tab {
+  background: var(--grey-3);
+  border-bottom: 1px solid var(--light-grey-1);
+  border-right: 1px solid var(--light-grey-1);
+  box-sizing: border-box;
+  color: var(--light-grey-6);
+  cursor: pointer;
+  display: table-cell;
+  font-weight: 300;
+  height: 44px;
+  line-height: 18px;
+  list-style: none;
+  padding: 12px 5px 13px;
+  text-align: center;
+}
+
+.react-tabs__tab:last-child {
+  border-right: none;
+}
+
+.react-tabs__tab--selected {
+  background: var(--dark-grey-2);
+  border-bottom: none;
+}
+
+.react-tabs__tab-panel {
+  display: none;
+  height: calc(100% - 44px);
+  overflow-y: auto;
+}
+
+.react-tabs__tab-panel--selected {
+  display: block;
+}
+
+/* Other tools styles */
+.react-tabs span.count {
+  background: var(--dark-grey-2);
+  border-radius: 3px;
+  color: var(--light-grey-6);
+  font-weight: 300;
+  margin-left: 3px;
+  padding: 0 5px;
+}
+
+.react-tabs .react-tabs__tab--selected span.count {
+  background: var(--grey-3);
+}
+
+.react-tabs span.count .preferred,
+.react-tabs span.count .pinned {
+  color: var(--light-green-1);
+}

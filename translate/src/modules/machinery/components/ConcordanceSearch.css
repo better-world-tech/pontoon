@@ -1,0 +1,7 @@
+.machinery .translation mark.search {
+  color: var(--orange-1);
+  font-weight: normal;
+  font-style: inherit;
+  background: var(--brown-1);
+  border-radius: 2px;
+}

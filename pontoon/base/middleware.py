@@ -1,7 +1,4 @@
-from __future__ import absolute_import, unicode_literals
-
 from django.conf import settings
-from django.contrib import auth
 from django.core.exceptions import PermissionDenied
 from django.http import Http404, HttpResponseForbidden
 from django.utils.deprecation import MiddlewareMixin
@@ -13,9 +10,7 @@ class RaygunExceptionMiddleware(Provider, MiddlewareMixin):
         # Ignore non-failure exceptions. We don't need to be notified
         # of these.
         if not isinstance(exception, (Http404, PermissionDenied)):
-            return super(RaygunExceptionMiddleware, self).process_exception(
-                request, exception
-            )
+            return super().process_exception(request, exception)
 
 
 class BlockedIpMiddleware(MiddlewareMixin):
@@ -35,20 +30,3 @@ class BlockedIpMiddleware(MiddlewareMixin):
             return HttpResponseForbidden("<h1>Forbidden</h1>")
 
         return None
-
-
-class AutomaticLoginUserMiddleware(MiddlewareMixin):
-    """
-    This middleware automatically logs in the user specified for AUTO_LOGIN.
-    """
-
-    def process_request(self, request):
-        if settings.AUTO_LOGIN and not request.user.is_authenticated:
-            user = auth.authenticate(
-                username=settings.AUTO_LOGIN_USERNAME,
-                password=settings.AUTO_LOGIN_PASSWORD,
-            )
-
-            if user:
-                request.user = user
-                auth.login(request, user)

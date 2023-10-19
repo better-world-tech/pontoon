@@ -1,10 +1,11 @@
-from __future__ import absolute_import
-
 from difflib import Differ
 from textwrap import dedent
 
+import pytest
+
 from pontoon.base.tests import TestCase
 from pontoon.sync import KEY_SEPARATOR
+from pontoon.sync.exceptions import ParseError
 from pontoon.sync.formats import xliff
 from pontoon.sync.tests.formats import FormatTestsMixin
 
@@ -39,8 +40,7 @@ BASE_XLIFF_FILE = """
 
 XLIFF_TEMPLATE = """
 <xliff>
-    <file original="filename" source-language="en" datatype="plaintext"
-          target-language="{locale_code}">
+    <file original="filename" source-language="en" datatype="plaintext" {attr}>
         <body>
             {body}
         </body>
@@ -57,7 +57,7 @@ class XLIFFTests(FormatTestsMixin, TestCase):
 
     def key(self, source_string):
         """XLIFF keys are prefixed with the file name."""
-        return u"filename" + KEY_SEPARATOR + super(XLIFFTests, self).key(source_string)
+        return "filename" + KEY_SEPARATOR + super().key(source_string)
 
     def assert_file_content(self, file_path, expected_content):
         """
@@ -86,15 +86,33 @@ class XLIFFTests(FormatTestsMixin, TestCase):
     def test_parse_missing_translation(self):
         self.run_parse_missing_translation(BASE_XLIFF_FILE, 3)
 
-    def generate_xliff(self, body, locale_code="en"):
-        return XLIFF_TEMPLATE.format(body=body, locale_code=locale_code)
+    def test_parse_invalid_translation(self):
+        """
+        If a resource has an invalid translation, raise a ParseError.
+        """
+        with pytest.raises(ParseError):
+            self.parse_string(
+                dedent(
+                    """
+                <trans-unit id="Source String Key"
+                    <source>Source String</source>
+                    <target>Translated String</target>
+                </trans-unit>
+            """
+                )
+            )
+
+    def generate_xliff(self, body, attr=""):
+        return XLIFF_TEMPLATE.format(body=body, attr=attr)
 
     def test_save_basic(self):
         """
         Test saving changes to an entity with a single translation.
 
-        Also happens to test if the locale code is saved correctly.
+        Make sure the target-language attribute is set when not present.
         """
+        attr = f'target-language="{self.locale.code}"'
+
         input_string = self.generate_xliff(
             dedent(
                 """
@@ -110,19 +128,59 @@ class XLIFFTests(FormatTestsMixin, TestCase):
         expected_string = self.generate_xliff(
             dedent(
                 """
-            <trans-unit id="Source String Key">
+            <trans-unit id="Source String Key" xml:space="preserve">
                 <source>Source String</source>
                 <target>New Translated String</target>
                 <note>Comment</note>
             </trans-unit>
         """
             ),
-            locale_code=self.locale.code,
+            attr=attr,
         )
 
-        super(XLIFFTests, self).run_save_basic(input_string, expected_string)
+        super().run_save_basic(
+            input_string, expected_string, source_string=input_string
+        )
+
+    def test_save_preserve_target_language(self):
+        """
+        Test that the existing target-language attribute is preserved.
+        """
+        attr = 'target-language="locale-code"'
+
+        input_string = self.generate_xliff(
+            dedent(
+                """
+            <trans-unit id="Source String Key">
+                <source>Source String</source>
+                <target>Translated String</target>
+                <note>Comment</note>
+            </trans-unit>
+        """
+            ),
+            attr=attr,
+        )
+
+        expected_string = self.generate_xliff(
+            dedent(
+                """
+            <trans-unit id="Source String Key" xml:space="preserve">
+                <source>Source String</source>
+                <target>New Translated String</target>
+                <note>Comment</note>
+            </trans-unit>
+        """
+            ),
+            attr=attr,
+        )
+
+        super().run_save_basic(
+            input_string, expected_string, source_string=input_string
+        )
 
     def test_save_remove(self):
+        attr = f'target-language="{self.locale.code}"'
+
         input_string = self.generate_xliff(
             dedent(
                 """
@@ -144,7 +202,9 @@ class XLIFFTests(FormatTestsMixin, TestCase):
             </trans-unit>
         """
             ),
-            locale_code=self.locale.code,
+            attr=attr,
         )
 
-        super(XLIFFTests, self).run_save_remove(input_string, expected_string)
+        super().run_save_remove(
+            input_string, expected_string, source_string=input_string
+        )

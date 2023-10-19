@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from collections import OrderedDict
 
 from django.db.models import Q
@@ -15,7 +13,7 @@ from pontoon.base.models import (
 from pontoon.tags.models import Tag
 
 
-class Clonable(object):
+class Clonable:
     """Instantiated descendants of this class can be called to create a cloned
     version of the object.
 
@@ -31,7 +29,7 @@ class Clonable(object):
             setattr(self, k, kwargs.get(k))
 
     def __call__(self, **kwargs):
-        clone_kwargs = dict((k, getattr(self, k)) for k in self.clone_kwargs)
+        clone_kwargs = {k: getattr(self, k) for k in self.clone_kwargs}
         clone_kwargs.update(kwargs)
         return self.__class__(**clone_kwargs)
 
@@ -142,8 +140,7 @@ class TagsDataTool(FilteredDataTool):
 
 
 class TagsTRTool(TagsDataTool):
-    """Data Tool from the perspective of TranslatedResources
-    """
+    """Data Tool from the perspective of TranslatedResources"""
 
     clone_kwargs = TagsDataTool.clone_kwargs + ("annotations", "groupby")
 
@@ -165,8 +162,7 @@ class TagsTRTool(TagsDataTool):
         return trs.filter(resource__project__in=self.projects) if self.projects else trs
 
     def filter_tag(self, trs):
-        """Filters on tag.slug and tag.priority
-        """
+        """Filters on tag.slug and tag.priority"""
 
         q = Q()
         if not self.slug:

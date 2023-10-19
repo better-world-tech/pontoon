@@ -1,13 +1,15 @@
-from __future__ import absolute_import
-
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.datastructures import MultiValueDictKeyError
 from django.views.decorators.http import require_POST
 
+from notifications.signals import notify
+
+from pontoon.actionlog.models import ActionLog
 from pontoon.actionlog.utils import log_action
 from pontoon.base import utils
 from pontoon.base.models import (
@@ -33,7 +35,7 @@ def create_translation(request):
         problems = []
         for field, errors in form.errors.items():
             problems.append(
-                'Error validating field `{0}`: "{1}"'.format(field, " ".join(errors))
+                'Error validating field `{}`: "{}"'.format(field, " ".join(errors))
             )
         return JsonResponse(
             {"status": False, "message": "\n".join(problems)}, status=400
@@ -63,7 +65,9 @@ def create_translation(request):
         )
 
     translations = Translation.objects.filter(
-        entity=entity, locale=locale, plural_form=plural_form,
+        entity=entity,
+        locale=locale,
+        plural_form=plural_form,
     )
 
     same_translations = translations.filter(string=string)
@@ -80,7 +84,11 @@ def create_translation(request):
     failed_checks = None
     if use_checks:
         failed_checks = run_checks(
-            entity, locale.code, original, string, user.profile.quality_checks,
+            entity,
+            locale.code,
+            original,
+            string,
+            user.profile.quality_checks,
         )
 
         if are_blocking_checks(failed_checks, ignore_warnings):
@@ -108,12 +116,58 @@ def create_translation(request):
 
     translation.save(failed_checks=failed_checks)
 
-    log_action("translation:created", user, translation=translation)
+    log_action(ActionLog.ActionType.TRANSLATION_CREATED, user, translation=translation)
 
     if translations:
         translation = entity.reset_active_translation(
-            locale=locale, plural_form=plural_form,
+            locale=locale,
+            plural_form=plural_form,
         )
+
+    # When user makes their first contribution to the team, notify team managers
+    first_contribution = not project.system_project and user.is_new_contributor(locale)
+    if first_contribution:
+        desc = """
+        <a href="{user_href}">{user}</a> has made their first contribution to
+        <a href="{locale_href}">{locale} ({locale_code})</a>.
+        Please welcome them to the team, and make sure to
+        <a href="{review_href}">review their suggestions</a>.
+        """.format(
+            user=user.name_or_email,
+            user_href=reverse(
+                "pontoon.contributors.contributor.username",
+                kwargs={
+                    "username": user.username,
+                },
+            ),
+            locale=locale.name,
+            locale_code=locale.code,
+            locale_href=reverse(
+                "pontoon.teams.team",
+                kwargs={
+                    "locale": locale.code,
+                },
+            ),
+            review_href=reverse(
+                "pontoon.translate",
+                kwargs={
+                    "locale": locale.code,
+                    "project": project.slug,
+                    "resource": entity.resource.path,
+                },
+            )
+            + f"?string={entity.pk}",
+        )
+
+        for manager in locale.managers_group.user_set.filter(
+            profile__new_contributor_notifications=True
+        ):
+            notify.send(
+                sender=manager,
+                recipient=manager,
+                verb="has reviewed suggestions",  # Triggers render of description only
+                description=desc,
+            )
 
     return JsonResponse(
         {
@@ -133,7 +187,7 @@ def delete_translation(request):
         translation_id = request.POST["translation"]
     except MultiValueDictKeyError as e:
         return JsonResponse(
-            {"status": False, "message": "Bad Request: {error}".format(error=e)},
+            {"status": False, "message": f"Bad Request: {e}"},
             status=400,
         )
 
@@ -168,7 +222,12 @@ def delete_translation(request):
 
     translation.delete()
 
-    log_action("translation:deleted", request.user, entity=entity, locale=locale)
+    log_action(
+        ActionLog.ActionType.TRANSLATION_DELETED,
+        request.user,
+        entity=entity,
+        locale=locale,
+    )
 
     return JsonResponse({"status": True})
 
@@ -184,7 +243,7 @@ def approve_translation(request):
         paths = request.POST.getlist("paths[]")
     except MultiValueDictKeyError as e:
         return JsonResponse(
-            {"status": False, "message": "Bad Request: {error}".format(error=e)},
+            {"status": False, "message": f"Bad Request: {e}"},
             status=400,
         )
 
@@ -243,10 +302,11 @@ def approve_translation(request):
 
     translation.approve(user)
 
-    log_action("translation:approved", user, translation=translation)
+    log_action(ActionLog.ActionType.TRANSLATION_APPROVED, user, translation=translation)
 
     active_translation = translation.entity.reset_active_translation(
-        locale=locale, plural_form=translation.plural_form,
+        locale=locale,
+        plural_form=translation.plural_form,
     )
 
     return JsonResponse(
@@ -267,7 +327,7 @@ def unapprove_translation(request):
         paths = request.POST.getlist("paths[]")
     except MultiValueDictKeyError as e:
         return JsonResponse(
-            {"status": False, "message": "Bad Request: {error}".format(error=e)},
+            {"status": False, "message": f"Bad Request: {e}"},
             status=400,
         )
 
@@ -301,10 +361,15 @@ def unapprove_translation(request):
 
     translation.unapprove(request.user)
 
-    log_action("translation:unapproved", request.user, translation=translation)
+    log_action(
+        ActionLog.ActionType.TRANSLATION_UNAPPROVED,
+        request.user,
+        translation=translation,
+    )
 
     active_translation = translation.entity.reset_active_translation(
-        locale=locale, plural_form=translation.plural_form,
+        locale=locale,
+        plural_form=translation.plural_form,
     )
 
     return JsonResponse(
@@ -325,7 +390,7 @@ def reject_translation(request):
         paths = request.POST.getlist("paths[]")
     except MultiValueDictKeyError as e:
         return JsonResponse(
-            {"status": False, "message": "Bad Request: {error}".format(error=e)},
+            {"status": False, "message": f"Bad Request: {e}"},
             status=400,
         )
 
@@ -365,10 +430,13 @@ def reject_translation(request):
 
     translation.reject(request.user)
 
-    log_action("translation:rejected", request.user, translation=translation)
+    log_action(
+        ActionLog.ActionType.TRANSLATION_REJECTED, request.user, translation=translation
+    )
 
     active_translation = translation.entity.reset_active_translation(
-        locale=locale, plural_form=translation.plural_form,
+        locale=locale,
+        plural_form=translation.plural_form,
     )
 
     return JsonResponse(
@@ -389,7 +457,7 @@ def unreject_translation(request):
         paths = request.POST.getlist("paths[]")
     except MultiValueDictKeyError as e:
         return JsonResponse(
-            {"status": False, "message": "Bad Request: {error}".format(error=e)},
+            {"status": False, "message": f"Bad Request: {e}"},
             status=400,
         )
 
@@ -423,10 +491,15 @@ def unreject_translation(request):
 
     translation.unreject(request.user)
 
-    log_action("translation:unrejected", request.user, translation=translation)
+    log_action(
+        ActionLog.ActionType.TRANSLATION_UNREJECTED,
+        request.user,
+        translation=translation,
+    )
 
     active_translation = translation.entity.reset_active_translation(
-        locale=locale, plural_form=translation.plural_form,
+        locale=locale,
+        plural_form=translation.plural_form,
     )
 
     return JsonResponse(

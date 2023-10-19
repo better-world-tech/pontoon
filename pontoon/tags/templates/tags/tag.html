@@ -10,7 +10,6 @@
 <!-- Server data -->
 <div id="server"
      class="hidden"
-     {% if csrf_token %}data-csrf="{{ csrf_token }}"{% endif %}
      data-url-split="projects/{{ project.slug }}">
 </div>
 {% endblock %}
@@ -46,7 +45,7 @@
 
       {% if project.contact %}
         {{ HeadingInfo.details_item(
-          title='Contact person',
+          title='Project manager',
           class='contact-person',
           value=project.contact.name_or_email,
           value_link=url('pontoon.contributors.contributor.username', project.contact.username))

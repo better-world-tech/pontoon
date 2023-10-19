@@ -1,10 +1,8 @@
-from __future__ import absolute_import
+from unittest.mock import patch, call
 
 import pytest
 
-from mock import patch, call
-
-from pontoon.base.models import Project, TranslationMemoryEntry
+from pontoon.base.models import Project, Translation, TranslationMemoryEntry
 from pontoon.test.factories import (
     EntityFactory,
     ProjectLocaleFactory,
@@ -32,7 +30,9 @@ def test_translation_save_latest_update_first_translation(
     assert project_locale_a.latest_translation is None
 
     translation = TranslationFactory.create(
-        locale=locale_a, entity=entity_a, date=aware_datetime(1970, 1, 1),
+        locale=locale_a,
+        entity=entity_a,
+        date=aware_datetime(1970, 1, 1),
     )
     for i in [locale_a, project_a, project_locale_a, tr]:
         i.refresh_from_db()
@@ -54,7 +54,9 @@ def test_translation_save_latest_update_newer_translation(
     tr = TranslatedResourceFactory.create(locale=locale_a, resource=resource_a)
 
     translation = TranslationFactory.create(
-        locale=locale_a, entity=entity_a, date=aware_datetime(1970, 1, 1),
+        locale=locale_a,
+        entity=entity_a,
+        date=aware_datetime(1970, 1, 1),
     )
     for i in [locale_a, project_a, project_locale_a, tr]:
         i.refresh_from_db()
@@ -64,7 +66,9 @@ def test_translation_save_latest_update_newer_translation(
     assert project_locale_a.latest_translation == translation
 
     newer_translation = TranslationFactory.create(
-        locale=locale_a, entity=entity_a, date=aware_datetime(1970, 2, 1),
+        locale=locale_a,
+        entity=entity_a,
+        date=aware_datetime(1970, 2, 1),
     )
     for i in [locale_a, project_a, project_locale_a, tr]:
         i.refresh_from_db()
@@ -86,7 +90,9 @@ def test_translation_save_latest_update_older_translation(
     tr = TranslatedResourceFactory.create(locale=locale_a, resource=resource_a)
 
     translation = TranslationFactory.create(
-        locale=locale_a, entity=entity_a, date=aware_datetime(1970, 2, 1),
+        locale=locale_a,
+        entity=entity_a,
+        date=aware_datetime(1970, 2, 1),
     )
     for i in [locale_a, project_a, project_locale_a, tr]:
         i.refresh_from_db()
@@ -97,7 +103,9 @@ def test_translation_save_latest_update_older_translation(
 
     # older translation
     TranslationFactory.create(
-        locale=locale_a, entity=entity_a, date=aware_datetime(1970, 1, 1),
+        locale=locale_a,
+        entity=entity_a,
+        date=aware_datetime(1970, 1, 1),
     )
     for i in [locale_a, project_a, project_locale_a, tr]:
         i.refresh_from_db()
@@ -154,10 +162,13 @@ def test_translation_save_latest_update_for_system_project(locale_a, system_proj
     but not on the locale object.
     """
     project_locale = ProjectLocaleFactory.create(
-        project=system_project_a, locale=locale_a,
+        project=system_project_a,
+        locale=locale_a,
     )
     resource = ResourceFactory.create(
-        project=system_project_a, path="resource.po", format="po",
+        project=system_project_a,
+        path="resource.po",
+        format="po",
     )
     tr = TranslatedResourceFactory.create(locale=locale_a, resource=resource)
     entity = EntityFactory.create(resource=resource, string="Entity X")
@@ -168,7 +179,9 @@ def test_translation_save_latest_update_for_system_project(locale_a, system_proj
     assert project_locale.latest_translation is None
 
     translation = TranslationFactory.create(
-        locale=locale_a, entity=entity, date=aware_datetime(1970, 1, 1),
+        locale=locale_a,
+        entity=entity,
+        date=aware_datetime(1970, 1, 1),
     )
     for i in [locale_a, system_project_a, project_locale, tr]:
         i.refresh_from_db()
@@ -191,7 +204,9 @@ def test_translation_save_latest_missing_project_locale(
     # This calls .save, this should fail if we're not properly
     # handling the missing ProjectLocale.
     translation = TranslationFactory.create(
-        locale=locale_a, entity=entity_a, date=aware_datetime(1970, 1, 1),
+        locale=locale_a,
+        entity=entity_a,
+        date=aware_datetime(1970, 1, 1),
     )
 
     for i in [locale_a, project_a, tr]:
@@ -208,7 +223,9 @@ def test_translation_approved_in_tm(locale_a, entity_a):
     entry in the translation memory.
     """
     translation = TranslationFactory.create(
-        locale=locale_a, entity=entity_a, approved=True,
+        locale=locale_a,
+        entity=entity_a,
+        approved=True,
     )
     assert TranslationMemoryEntry.objects.get(
         source=translation.entity.string,
@@ -222,7 +239,10 @@ def test_translation_unapproved_not_in_tm(locale_a, entity_a):
     """
     Unapproved translation shouldn't be in the translation memory.
     """
-    translation = TranslationFactory.create(locale=locale_a, entity=entity_a,)
+    translation = TranslationFactory.create(
+        locale=locale_a,
+        entity=entity_a,
+    )
     with pytest.raises(TranslationMemoryEntry.DoesNotExist):
         TranslationMemoryEntry.objects.get(
             source=translation.entity.string,
@@ -238,7 +258,9 @@ def test_translation_rejected_not_in_tm(locale_a, entity_a):
     needs to be deleted, too.
     """
     translation = TranslationFactory.create(
-        locale=locale_a, entity=entity_a, rejected=True,
+        locale=locale_a,
+        entity=entity_a,
+        rejected=True,
     )
     with pytest.raises(TranslationMemoryEntry.DoesNotExist):
         TranslationMemoryEntry.objects.get(
@@ -275,3 +297,27 @@ def test_translation_not_in_terminology_saved(
     TranslationFactory.create(locale=locale_a, entity=entity_a)
 
     assert not reset_term_translation_mock.called
+
+
+@pytest.mark.django_db
+def test_machinery_sources_values(locale_a, entity_a):
+    """
+    Return comma-separated machinery_sources values for the given translation.
+    """
+    translation_no_machinery_sources = TranslationFactory.create(
+        locale=locale_a,
+        entity=entity_a,
+    )
+    assert translation_no_machinery_sources.machinery_sources_values == ""
+
+    translation = TranslationFactory.create(
+        locale=locale_a,
+        entity=entity_a,
+        machinery_sources=[
+            Translation.MachinerySource.TRANSLATION_MEMORY,
+            Translation.MachinerySource.GOOGLE_TRANSLATE,
+        ],
+    )
+    assert (
+        translation.machinery_sources_values == "Translation Memory, Google Translate"
+    )

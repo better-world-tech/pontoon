@@ -1,21 +1,17 @@
-from __future__ import absolute_import
-
+import html
 import re
 
 import bleach
 
 from collections import defaultdict
 from fluent.syntax import FluentParser, ast
+from fluent.syntax.visitor import Visitor
 
 from pontoon.sync.formats.ftl import localizable_entries
 
 
-from six.moves import html_parser
-
-
 MAX_LENGTH_RE = re.compile(r"MAX_LENGTH:( *)(\d+)", re.MULTILINE)
 parser = FluentParser()
-html_parser = html_parser.HTMLParser()
 
 
 def get_max_length(comment):
@@ -28,6 +24,24 @@ def get_max_length(comment):
         return int(max_length[0][1])
 
     return None
+
+
+class IsEmptyVisitor(Visitor):
+    def __init__(self):
+        self.is_empty = True
+
+    def visit_Placeable(self, node):
+        if isinstance(node.expression, ast.Literal):
+            if node.expression.parse()["value"]:
+                self.is_empty = False
+        elif isinstance(node.expression, ast.SelectExpression):
+            self.generic_visit(node.expression)
+        else:
+            self.is_empty = False
+
+    def visit_TextElement(self, node):
+        if node.value:
+            self.is_empty = False
 
 
 def run_checks(entity, original, string):
@@ -50,7 +64,7 @@ def run_checks(entity, original, string):
 
         if max_length:
             string_length = len(
-                html_parser.unescape(bleach.clean(string, strip=True, tags=()))
+                html.unescape(bleach.clean(string, strip=True, tags=()))
             )
 
             if string_length > max_length:
@@ -84,5 +98,13 @@ def run_checks(entity, original, string):
         # Message ID mismatch
         elif entity_ast.id.name != translation_ast.id.name:
             checks["pErrors"].append("Translation key needs to match source string key")
+
+        # Empty translation entry warning; set here rather than pontoon_non_db.py
+        # to avoid needing to parse the Fluent message twice.
+        else:
+            visitor = IsEmptyVisitor()
+            visitor.visit(translation_ast)
+            if visitor.is_empty:
+                checks["pndbWarnings"].append("Empty translation")
 
     return checks

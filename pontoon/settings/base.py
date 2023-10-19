@@ -1,6 +1,4 @@
 """Django settings for Pontoon."""
-from __future__ import absolute_import
-
 import re
 import os
 import socket
@@ -32,12 +30,6 @@ DEBUG = os.environ.get("DJANGO_DEBUG", "False") != "False"
 
 HEROKU_DEMO = os.environ.get("HEROKU_DEMO", "False") != "False"
 
-# Automatically log in the user with username 'AUTO_LOGIN_USERNAME'
-# and password 'AUTO_LOGIN_PASSWORD'
-AUTO_LOGIN = os.environ.get("AUTO_LOGIN", "False") != "False"
-AUTO_LOGIN_USERNAME = os.environ.get("AUTO_LOGIN_USERNAME", None)
-AUTO_LOGIN_PASSWORD = os.environ.get("AUTO_LOGIN_PASSWORD", None)
-
 LOGOUT_REDIRECT_URL = "/"
 
 ADMINS = MANAGERS = (
@@ -47,10 +39,21 @@ ADMINS = MANAGERS = (
 # A list of project manager email addresses to send project requests to
 PROJECT_MANAGERS = os.environ.get("PROJECT_MANAGERS", "").split(",")
 
-# Email from which new locale requests are sent.
-LOCALE_REQUEST_FROM_EMAIL = os.environ.get(
-    "LOCALE_REQUEST_FROM_EMAIL", "pontoon@example.com"
-)
+
+def _get_site_url_netloc():
+    from urllib.parse import urlparse
+    from django.conf import settings
+
+    return urlparse(settings.SITE_URL).netloc
+
+
+def _default_from_email():
+    return os.environ.get(
+        "DEFAULT_FROM_EMAIL", f"Pontoon <pontoon@{_get_site_url_netloc()}>"
+    )
+
+
+DEFAULT_FROM_EMAIL = lazy(_default_from_email, str)()
 
 # VCS identity to be used when committing translations.
 VCS_SYNC_NAME = os.environ.get("VCS_SYNC_NAME", "Pontoon")
@@ -66,7 +69,8 @@ if not DEV and not DEBUG:
         DATABASES["default"]["OPTIONS"] = {}
     DATABASES["default"]["OPTIONS"]["sslmode"] = "require"
 
-FRONTEND_DIR = os.path.join(ROOT, "frontend")
+TAGADMIN_DIR = os.path.join(ROOT, "tag-admin")
+TRANSLATE_DIR = os.path.join(ROOT, "translate")
 
 # Absolute path to the directory static files should be collected to.
 # Don't put anything in this directory yourself; store your static files
@@ -93,6 +97,94 @@ BROKER_URL = os.environ.get("RABBITMQ_URL", None)
 # Google Cloud Translation API key
 GOOGLE_TRANSLATE_API_KEY = os.environ.get("GOOGLE_TRANSLATE_API_KEY", "")
 
+# Pontoon locale codes supported by Google Cloud AutoML Translation Project ID
+#
+# Source:
+# https://cloud.google.com/translate/automl/docs/languages#supported_codes_for_language_variants
+GOOGLE_AUTOML_SUPPORTED_LOCALES = [
+    "af",
+    "ar",
+    "az",
+    "bg",
+    "bn",
+    "ca",
+    "cs",
+    "cy",
+    "da",
+    "de",
+    "el",
+    "es",
+    "es-AR",
+    "es-CL",
+    "es-ES",
+    "es-MX",
+    "et",
+    "fa",
+    "fi",
+    "fil",
+    "fr",
+    "gl",
+    "gu-IN",
+    "he",
+    "hi",
+    "hi-IN",
+    "hr",
+    "ht",
+    "hu",
+    "id",
+    "is",
+    "it",
+    "ja",
+    "jv",
+    "ka",
+    "km",
+    "ko",
+    "lt",
+    "lv",
+    "mr",
+    "ms",
+    "my",
+    "nb-NO",
+    "ne-NP",
+    "nl",
+    "pa-IN",
+    "pa-PK",
+    "pl",
+    "ps",
+    "pt",
+    "pt-BR",
+    "pt-PT",
+    "ro",
+    "ru",
+    "sk",
+    "sl",
+    "sq",
+    "sr",
+    "sv-SE",
+    "sw",
+    "ta",
+    "te",
+    "th",
+    "tr",
+    "uk",
+    "ur",
+    "uz",
+    "vi",
+    "zh-CN",
+    "zh-HK",
+    "zh-TW",
+    "zu",
+]
+
+# Google Cloud AutoML Translation Project ID
+GOOGLE_AUTOML_PROJECT_ID = os.environ.get("GOOGLE_AUTOML_PROJECT_ID", "")
+
+# It is recommended to make Google Cloud AutoML Translation warmup requests every minute,
+# although in our experience every 5 minutes (300 seconds) is sufficient.
+GOOGLE_AUTOML_WARMUP_INTERVAL = float(
+    os.environ.get("GOOGLE_AUTOML_WARMUP_INTERVAL", "300")
+)
+
 # Microsoft Translator API Key
 MICROSOFT_TRANSLATOR_API_KEY = os.environ.get("MICROSOFT_TRANSLATOR_API_KEY", "")
 
@@ -108,11 +200,16 @@ GOOGLE_ANALYTICS_KEY = os.environ.get("GOOGLE_ANALYTICS_KEY", "")
 RAYGUN4PY_CONFIG = {"api_key": os.environ.get("RAYGUN_APIKEY", "")}
 
 # Email settings
-EMAIL_HOST_USER = os.environ.get("SENDGRID_USERNAME", "")
-EMAIL_HOST = "smtp.sendgrid.net"
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_PASSWORD = os.environ.get("SENDGRID_PASSWORD", "")
+EMAIL_HOST_USER = os.environ.get(
+    "EMAIL_HOST_USER", os.environ.get("SENDGRID_USERNAME", "apikey")
+)
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "smtp.sendgrid.net")
+EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
+EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "True") != "False"
+EMAIL_USE_SSL = os.environ.get("EMAIL_USE_SSL", "False") != "False"
+EMAIL_HOST_PASSWORD = os.environ.get(
+    "EMAIL_HOST_PASSWORD", os.environ.get("SENDGRID_PASSWORD", "")
+)
 
 # Log emails to console if the SendGrid credentials are missing.
 if EMAIL_HOST_USER and EMAIL_HOST_PASSWORD:
@@ -130,7 +227,7 @@ INSTALLED_APPS = (
     "pontoon.base",
     "pontoon.contributors",
     "pontoon.checks",
-    "pontoon.in_context",
+    "pontoon.insights",
     "pontoon.localizations",
     "pontoon.machinery",
     "pontoon.projects",
@@ -141,6 +238,7 @@ INSTALLED_APPS = (
     "pontoon.tour",
     "pontoon.translate",
     "pontoon.translations",
+    "pontoon.uxactionlog",
     "pontoon.homepage",
     # Django contrib apps
     "django.contrib.admin",
@@ -148,15 +246,12 @@ INSTALLED_APPS = (
     "django.contrib.contenttypes",
     "django.contrib.messages",
     "django.contrib.sessions",
-    "whitenoise.runserver_nostatic",
     "django.contrib.staticfiles",
     # Django sites app is required by django-allauth
     "django.contrib.sites",
     # Third-party apps, patches, fixes
     "django_jinja",
-    "django_nose",
     "pipeline",
-    "session_csrf",
     "guardian",
     "corsheaders",
     "allauth",
@@ -166,9 +261,9 @@ INSTALLED_APPS = (
     "allauth.socialaccount.providers.github",
     "allauth.socialaccount.providers.google",
     "allauth.socialaccount.providers.gitlab",
+    "allauth.socialaccount.providers.keycloak",
     "notifications",
     "graphene_django",
-    "webpack_loader",
     "django_ace",
 )
 
@@ -184,11 +279,10 @@ MIDDLEWARE = (
     "django.middleware.common.CommonMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
-    "session_csrf.CsrfMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "csp.middleware.CSPMiddleware",
-    "pontoon.base.middleware.AutomaticLoginUserMiddleware",
 )
 
 CONTEXT_PROCESSORS = (
@@ -196,7 +290,6 @@ CONTEXT_PROCESSORS = (
     "django.template.context_processors.debug",
     "django.template.context_processors.media",
     "django.template.context_processors.request",
-    "session_csrf.context_processor",
     "django.contrib.messages.context_processors.messages",
     "pontoon.base.context_processors.globals",
 )
@@ -206,7 +299,7 @@ TEMPLATES = [
         "BACKEND": "django_jinja.backend.Jinja2",
         "NAME": "jinja2",
         "APP_DIRS": True,
-        "DIRS": [os.path.join(FRONTEND_DIR, "build")],
+        "DIRS": [os.path.join(TRANSLATE_DIR, "public")],
         "OPTIONS": {
             "match_extension": "",
             "match_regex": re.compile(
@@ -239,7 +332,6 @@ TEMPLATES = [
                 "django_jinja.builtins.extensions.StaticFilesExtension",
                 "django_jinja.builtins.extensions.DjangoFiltersExtension",
                 "pipeline.jinja2.PipelineExtension",
-                "webpack_loader.contrib.jinja2ext.WebpackExtension",
             ],
         },
     },
@@ -265,14 +357,12 @@ AUTHENTICATION_BACKENDS = [
     "guardian.backends.ObjectPermissionBackend",
 ]
 
-# This variable is required by django-guardian.
-# App supports giving permissions for anonymous users.
-ANONYMOUS_USER_ID = -1
 GUARDIAN_RAISE_403 = True
 
 PIPELINE_CSS = {
     "base": {
         "source_filenames": (
+            "css/dark-theme.css",
             "css/fontawesome-all.css",
             "css/nprogress.css",
             "css/boilerplate.css",
@@ -281,12 +371,24 @@ PIPELINE_CSS = {
         ),
         "output_filename": "css/base.min.css",
     },
+    "translate": {
+        "source_filenames": ("translate.css", "css/dark-theme.css"),
+        "output_filename": "css/translate.min.css",
+    },
     "admin": {
-        "source_filenames": ("css/table.css", "css/admin.css",),
+        "source_filenames": (
+            "css/table.css",
+            "css/admin.css",
+        ),
         "output_filename": "css/admin.min.css",
     },
     "admin_project": {
-        "source_filenames": ("css/double_list_selector.css", "css/admin_project.css",),
+        "source_filenames": (
+            "css/double_list_selector.css",
+            "css/multiple_team_selector.css",
+            "css/admin_project.css",
+            "tag_admin.css",
+        ),
         "output_filename": "css/admin_project.min.css",
     },
     "project": {
@@ -298,8 +400,17 @@ PIPELINE_CSS = {
             "css/sidebar_menu.css",
             "css/multiple_team_selector.css",
             "css/manual_notifications.css",
+            "css/insights_charts.css",
+            "css/insights_tab.css",
         ),
         "output_filename": "css/project.min.css",
+    },
+    "insights": {
+        "source_filenames": (
+            "css/insights_charts.css",
+            "css/insights.css",
+        ),
+        "output_filename": "css/insights.min.css",
     },
     "localization": {
         "source_filenames": (
@@ -307,22 +418,31 @@ PIPELINE_CSS = {
             "css/contributors.css",
             "css/heading_info.css",
             "css/info.css",
+            "css/download_selector.css",
+            "css/insights_charts.css",
+            "css/insights_tab.css",
         ),
         "output_filename": "css/localization.min.css",
     },
     "projects": {
-        "source_filenames": ("css/heading_info.css", "css/table.css",),
+        "source_filenames": (
+            "css/heading_info.css",
+            "css/table.css",
+        ),
         "output_filename": "css/projects.min.css",
     },
     "team": {
         "source_filenames": (
             "css/table.css",
             "css/double_list_selector.css",
+            "css/download_selector.css",
             "css/contributors.css",
             "css/heading_info.css",
             "css/team.css",
-            "css/info.css",
             "css/request.css",
+            "css/insights_charts.css",
+            "css/insights_tab.css",
+            "css/info.css",
         ),
         "output_filename": "css/team.min.css",
     },
@@ -339,7 +459,11 @@ PIPELINE_CSS = {
         "output_filename": "css/sync_logs.min.css",
     },
     "profile": {
-        "source_filenames": ("css/contributor.css", "css/profile.css",),
+        "source_filenames": (
+            "css/contributor.css",
+            "css/insights_charts.css",
+            "css/profile.css",
+        ),
         "output_filename": "css/profile.min.css",
     },
     "settings": {
@@ -347,32 +471,38 @@ PIPELINE_CSS = {
             "css/multiple_team_selector.css",
             "css/contributor.css",
             "css/team_selector.css",
+            "css/toggle.css",
             "css/settings.css",
         ),
         "output_filename": "css/settings.min.css",
     },
     "notifications": {
-        "source_filenames": ("css/sidebar_menu.css", "css/notifications.css",),
+        "source_filenames": (
+            "css/sidebar_menu.css",
+            "css/notifications.css",
+        ),
         "output_filename": "css/notifications.min.css",
     },
     "machinery": {
-        "source_filenames": ("css/team_selector.css", "css/machinery.css",),
+        "source_filenames": (
+            "css/team_selector.css",
+            "css/machinery.css",
+        ),
         "output_filename": "css/machinery.min.css",
     },
     "contributors": {
-        "source_filenames": ("css/heading_info.css", "css/contributors.css",),
+        "source_filenames": (
+            "css/heading_info.css",
+            "css/contributors.css",
+        ),
         "output_filename": "css/contributors.min.css",
-    },
-    "in_context": {
-        "source_filenames": ("css/bootstrap.min.css", "css/agency.css",),
-        "output_filename": "css/in_context.min.css",
     },
     "terms": {
         "source_filenames": ("css/terms.css",),
         "output_filename": "css/terms.min.css",
     },
     "homepage": {
-        "source_filenames": ("css/fullpage.css", "css/homepage.css",),
+        "source_filenames": ("css/homepage.css",),
         "output_filename": "css/homepage.min.css",
     },
 }
@@ -380,7 +510,7 @@ PIPELINE_CSS = {
 PIPELINE_JS = {
     "base": {
         "source_filenames": (
-            "js/lib/jquery-1.11.1.min.js",
+            "js/lib/jquery-3.6.1.js",
             "js/lib/jquery.timeago.js",
             "js/lib/jquery.color-2.1.2.js",
             "js/lib/nprogress.js",
@@ -388,29 +518,46 @@ PIPELINE_JS = {
         ),
         "output_filename": "js/base.min.js",
     },
+    "translate": {
+        "source_filenames": ("translate.js",),
+        "output_filename": "js/translate.min.js",
+    },
     "admin": {
         "source_filenames": ("js/table.js",),
         "output_filename": "js/admin.min.js",
     },
     "admin_project": {
         "source_filenames": (
-            "js/lib/jquery-ui.js",
             "js/double_list_selector.js",
+            "js/multiple_team_selector.js",
             "js/admin_project.js",
+            "tag_admin.js",
         ),
         "output_filename": "js/admin_project.min.js",
     },
+    "insights": {
+        "source_filenames": (
+            "js/lib/Chart.bundle.js",
+            "js/insights_charts.js",
+            "js/insights.js",
+        ),
+        "output_filename": "js/insights.min.js",
+    },
     "localization": {
         "source_filenames": (
+            "js/lib/Chart.bundle.js",
             "js/table.js",
             "js/progress-chart.js",
             "js/tabs.js",
+            "js/insights_charts.js",
+            "js/insights_tab.js",
             "js/info.js",
         ),
         "output_filename": "js/localization.min.js",
     },
     "project": {
         "source_filenames": (
+            "js/lib/Chart.bundle.js",
             "js/table.js",
             "js/request.js",
             "js/progress-chart.js",
@@ -418,15 +565,21 @@ PIPELINE_JS = {
             "js/sidebar_menu.js",
             "js/multiple_team_selector.js",
             "js/manual_notifications.js",
+            "js/insights_charts.js",
+            "js/insights_tab.js",
         ),
         "output_filename": "js/project.min.js",
     },
     "projects": {
-        "source_filenames": ("js/table.js", "js/progress-chart.js",),
+        "source_filenames": (
+            "js/table.js",
+            "js/progress-chart.js",
+        ),
         "output_filename": "js/projects.min.js",
     },
     "team": {
         "source_filenames": (
+            "js/lib/Chart.bundle.js",
             "js/table.js",
             "js/progress-chart.js",
             "js/double_list_selector.js",
@@ -434,21 +587,31 @@ PIPELINE_JS = {
             "js/tabs.js",
             "js/request.js",
             "js/permissions.js",
+            "js/insights_charts.js",
+            "js/insights_tab.js",
             "js/info.js",
         ),
         "output_filename": "js/team.min.js",
     },
     "teams": {
-        "source_filenames": ("js/table.js", "js/progress-chart.js", "js/request.js",),
+        "source_filenames": (
+            "js/table.js",
+            "js/progress-chart.js",
+            "js/request.js",
+        ),
         "output_filename": "js/teams.min.js",
     },
     "profile": {
-        "source_filenames": ("js/contributor.js",),
+        "source_filenames": (
+            "js/lib/Chart.bundle.js",
+            "js/insights_charts.js",
+            "js/profile.js",
+        ),
         "output_filename": "js/profile.min.js",
     },
     "settings": {
         "source_filenames": (
-            "js/lib/jquery-ui.js",
+            "js/lib/jquery-ui-1.13.2.js",
             "js/multiple_team_selector.js",
             "js/team_selector.js",
             "js/settings.js",
@@ -456,7 +619,10 @@ PIPELINE_JS = {
         "output_filename": "js/settings.min.js",
     },
     "notifications": {
-        "source_filenames": ("js/sidebar_menu.js", "js/notifications.js",),
+        "source_filenames": (
+            "js/sidebar_menu.js",
+            "js/notifications.js",
+        ),
         "output_filename": "js/notifications.min.js",
     },
     "machinery": {
@@ -469,7 +635,7 @@ PIPELINE_JS = {
         "output_filename": "js/machinery.min.js",
     },
     "homepage": {
-        "source_filenames": ("js/lib/fullpage.js", "js/homepage.js"),
+        "source_filenames": ("js/homepage.js",),
         "output_filename": "js/homepage.min.js",
     },
 }
@@ -477,11 +643,12 @@ PIPELINE_JS = {
 PIPELINE = {
     "STYLESHEETS": PIPELINE_CSS,
     "JAVASCRIPT": PIPELINE_JS,
+    "JS_COMPRESSOR": "pipeline.compressors.terser.TerserCompressor",
+    "CSS_COMPRESSOR": "pipeline.compressors.NoopCompressor",
     "YUGLIFY_BINARY": path(
         os.environ.get("YUGLIFY_BINARY", "node_modules/.bin/yuglify")
     ),
-    "BABEL_BINARY": path("node_modules/.bin/babel"),
-    "BABEL_ARGUMENTS": "--modules ignore",
+    "TERSER_BINARY": path(os.environ.get("TERSER_BINARY", "node_modules/.bin/terser")),
     "DISABLE_WRAPPER": True,
 }
 
@@ -508,7 +675,7 @@ SITE_ID = 1
 
 # Absolute path to the directory that holds media.
 # Example: "/home/media/media.lawrence.com/"
-MEDIA_ROOT = path("media")
+MEDIA_ROOT = os.environ.get("MEDIA_ROOT", path("media"))
 
 # URL that handles the media served from MEDIA_ROOT. Make sure to use a
 # trailing slash if there is a path component (optional in other cases).
@@ -526,17 +693,15 @@ STATICFILES_FINDERS = (
     "django.contrib.staticfiles.finders.AppDirectoriesFinder",
 )
 STATICFILES_DIRS = [
-    path("assets"),
-    os.path.join(FRONTEND_DIR, "build", "static"),
+    os.path.join(TRANSLATE_DIR, "dist"),
+    os.path.join(TRANSLATE_DIR, "public"),
+    os.path.join(TAGADMIN_DIR, "dist"),
 ]
 
 
 # Set ALLOWED_HOSTS based on SITE_URL setting.
 def _allowed_hosts():
-    from django.conf import settings
-    from six.moves.urllib.parse import urlparse
-
-    host = urlparse(settings.SITE_URL).netloc  # Remove protocol and path
+    host = _get_site_url_netloc()  # Remove protocol and path
     result = [host]
     # In order to be able to use ALLOWED_HOSTS to validate URLs, we need to
     # have a version of the host that contains the port. This only applies
@@ -594,17 +759,6 @@ if os.environ.get("DJANGO_SQL_LOG", False):
         "handlers": ["console"],
     }
 
-# Tests
-TEST_RUNNER = "django_nose.NoseTestSuiteRunner"
-NOSE_ARGS = [
-    "--logging-filter=-factory,-django.db,-raygun4py",
-    "--logging-clear-handlers",
-]
-
-# Disable nose-progressive on CI due to ugly output.
-if not os.environ.get("CI", False):
-    NOSE_ARGS.append("--with-progressive")
-
 # General auth settings
 LOGIN_URL = "/"
 LOGIN_REDIRECT_URL = "/"
@@ -615,8 +769,8 @@ LOGIN_REDIRECT_URL_FAILURE = "/"
 # everything.
 ENGAGE_ROBOTS = False
 
-# Always generate a CSRF token for anonymous users.
-ANON_ALWAYS = True
+# Store the CSRF token in the user's session instead of in a cookie.
+CSRF_USE_SESSIONS = True
 
 # Set X-Frame-Options to DENY by default on all responses.
 X_FRAME_OPTIONS = "DENY"
@@ -641,8 +795,8 @@ SECURE_SSL_REDIRECT = not (DEBUG or os.environ.get("CI", False))
 
 # Content-Security-Policy headers
 CSP_DEFAULT_SRC = ("'none'",)
-CSP_CHILD_SRC = ("https:",)
-CSP_FRAME_SRC = ("https:",)  # Older browsers
+CSP_FRAME_SRC = ("https:",)
+CSP_WORKER_SRC = ("https:",)
 CSP_CONNECT_SRC = (
     "'self'",
     "https://bugzilla.mozilla.org/rest/bug",
@@ -673,12 +827,12 @@ CSP_STYLE_SRC = (
 # Needed if site not hosted on HTTPS domains (like local setup)
 if not (HEROKU_DEMO or SITE_URL.startswith("https")):
     CSP_IMG_SRC = CSP_IMG_SRC + ("http://www.gravatar.com/avatar/",)
-    CSP_CHILD_SRC = CSP_FRAME_SRC = CSP_FRAME_SRC + ("http:",)
+    CSP_WORKER_SRC = CSP_FRAME_SRC = CSP_FRAME_SRC + ("http:",)
 
 # For absolute urls
 try:
     DOMAIN = socket.gethostname()
-except socket.error:
+except OSError:
     DOMAIN = "localhost"
 PROTOCOL = "http://"
 PORT = 80
@@ -711,6 +865,11 @@ USE_L10N = False
 # Enable Bugs tab on the team pages, pulling data from bugzilla.mozilla.org.
 # See bug 1567402 for details. A Mozilla-specific variable.
 ENABLE_BUGS_TAB = os.environ.get("ENABLE_BUGS_TAB", "False") != "False"
+
+# Enable Insights dashboards,
+# presenting data that needs to be collected by a scheduled job.
+# See docs/admin/deployment.rst for more information.
+ENABLE_INSIGHTS = os.environ.get("ENABLE_INSIGHTS", "False") != "False"
 
 # Bleach tags and attributes
 ALLOWED_TAGS = [
@@ -750,7 +909,7 @@ except ValueError:
 
 SYNC_LOG_RETENTION = 90  # days
 
-MANUAL_SYNC = os.environ.get("MANUAL_SYNC", "False") != "False"
+MANUAL_SYNC = os.environ.get("MANUAL_SYNC", "True") != "False"
 
 # Celery
 
@@ -776,10 +935,9 @@ CELERY_ACCEPT_CONTENT = ["pickle"]
 
 # Settings related to the CORS mechanisms.
 # For the sake of integration with other sites,
-# some of javascript files (e.g. pontoon.js)
-# require Access-Control-Allow-Origin header to be set as '*'.
-CORS_ORIGIN_ALLOW_ALL = True
-CORS_URLS_REGEX = r"^/(pontoon\.js|graphql/?)$"
+# all origins are allowed for the GraphQL endpoint.
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_URLS_REGEX = r"^/graphql/?$"
 
 SOCIALACCOUNT_ENABLED = True
 SOCIALACCOUNT_ADAPTER = "pontoon.base.adapter.PontoonSocialAdapter"
@@ -798,7 +956,7 @@ ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_EMAIL_VERIFICATION = "none"
 ACCOUNT_USER_DISPLAY = account_username
 
-# Firefox Accounts
+# Mozilla Accounts (formerly Firefox Accounts)
 FXA_CLIENT_ID = os.environ.get("FXA_CLIENT_ID")
 FXA_SECRET_KEY = os.environ.get("FXA_SECRET_KEY")
 FXA_OAUTH_ENDPOINT = os.environ.get("FXA_OAUTH_ENDPOINT", "")
@@ -818,6 +976,10 @@ GITLAB_SECRET_KEY = os.environ.get("GITLAB_SECRET_KEY")
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
 GOOGLE_SECRET_KEY = os.environ.get("GOOGLE_SECRET_KEY")
 
+# Keycloak Accounts
+KEYCLOAK_CLIENT_ID = os.environ.get("KEYCLOAK_CLIENT_ID")
+KEYCLOAK_CLIENT_SECRET = os.environ.get("KEYCLOAK_CLIENT_SECRET")
+
 # All settings related to the AllAuth
 SOCIALACCOUNT_PROVIDERS = {
     "fxa": {
@@ -826,15 +988,11 @@ SOCIALACCOUNT_PROVIDERS = {
         "PROFILE_ENDPOINT": FXA_PROFILE_ENDPOINT,
     },
     "gitlab": {"GITLAB_URL": GITLAB_URL, "SCOPE": ["read_user"]},
+    "keycloak": {
+        "KEYCLOAK_URL": os.environ.get("KEYCLOAK_URL"),
+        "KEYCLOAK_REALM": os.environ.get("KEYCLOAK_REALM"),
+    },
 }
-
-# Defined all trusted origins that will be returned in pontoon.js file.
-if os.environ.get("JS_TRUSTED_ORIGINS"):
-    JS_TRUSTED_ORIGINS = os.environ.get("JS_TRUSTED_ORIGINS").split(",")
-else:
-    JS_TRUSTED_ORIGINS = [
-        SITE_URL,
-    ]
 
 # Configuration of `django-notifications-hq` app
 DJANGO_NOTIFICATIONS_CONFIG = {
@@ -845,3 +1003,9 @@ DJANGO_NOTIFICATIONS_CONFIG = {
 
 # Maximum number of read notifications to display in the notifications menu
 NOTIFICATIONS_MAX_COUNT = 7
+
+# Integer representing a day of the week on which the `send_suggestion_notifications`
+# management command will run.
+SUGGESTION_NOTIFICATIONS_DAY = os.environ.get("SUGGESTION_NOTIFICATIONS_DAY", 4)
+
+DEFAULT_AUTO_FIELD = "django.db.models.AutoField"

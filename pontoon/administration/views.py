@@ -1,8 +1,5 @@
-from __future__ import absolute_import
-
+import csv
 import logging
-
-from backports import csv
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
@@ -20,11 +17,10 @@ from pontoon.administration.forms import (
     ExternalResourceInlineFormSet,
     ProjectForm,
     RepositoryInlineFormSet,
-    SubpageInlineFormSet,
     TagInlineFormSet,
 )
 from pontoon.base import utils
-from pontoon.base.utils import require_AJAX
+from pontoon.base.utils import require_AJAX, is_ajax
 from pontoon.base.models import (
     Entity,
     Locale,
@@ -64,7 +60,7 @@ def get_slug(request):
         log.error("Insufficient privileges.")
         return HttpResponse("error")
 
-    if not request.is_ajax():
+    if not is_ajax(request):
         log.error("Non-AJAX request")
         return HttpResponse("error")
 
@@ -90,12 +86,12 @@ def manage_project(request, slug=None, template="admin_project.html"):
         raise PermissionDenied
 
     form = ProjectForm()
-    subpage_formset = SubpageInlineFormSet()
     repo_formset = RepositoryInlineFormSet()
     external_resource_formset = ExternalResourceInlineFormSet()
     tag_formset = TagInlineFormSet()
     locales_readonly = Locale.objects.none()
     locales_selected = Locale.objects.none()
+    locales_pretranslate = Locale.objects.none()
     subtitle = "Add project"
     pk = None
     project = None
@@ -108,6 +104,9 @@ def manage_project(request, slug=None, template="admin_project.html"):
         locales_selected = Locale.objects.filter(
             pk__in=request.POST.getlist("locales")
         ).exclude(pk__in=locales_readonly)
+        locales_pretranslate = Locale.objects.filter(
+            pk__in=request.POST.getlist("locales_pretranslate")
+        )
 
         # Update existing project
         try:
@@ -115,7 +114,6 @@ def manage_project(request, slug=None, template="admin_project.html"):
             project = Project.objects.visible_for(request.user).get(pk=pk)
             form = ProjectForm(request.POST, instance=project)
             # Needed if form invalid
-            subpage_formset = SubpageInlineFormSet(request.POST, instance=project)
             repo_formset = RepositoryInlineFormSet(request.POST, instance=project)
             tag_formset = (
                 TagInlineFormSet(request.POST, instance=project)
@@ -131,14 +129,12 @@ def manage_project(request, slug=None, template="admin_project.html"):
         except MultiValueDictKeyError:
             form = ProjectForm(request.POST)
             # Needed if form invalid
-            subpage_formset = SubpageInlineFormSet(request.POST)
             repo_formset = RepositoryInlineFormSet(request.POST)
             external_resource_formset = ExternalResourceInlineFormSet(request.POST)
             tag_formset = None
 
         if form.is_valid():
             project = form.save(commit=False)
-            subpage_formset = SubpageInlineFormSet(request.POST, instance=project)
             repo_formset = RepositoryInlineFormSet(request.POST, instance=project)
             external_resource_formset = ExternalResourceInlineFormSet(
                 request.POST, instance=project
@@ -146,8 +142,7 @@ def manage_project(request, slug=None, template="admin_project.html"):
             if tag_formset:
                 tag_formset = TagInlineFormSet(request.POST, instance=project)
             formsets_valid = (
-                subpage_formset.is_valid()
-                and repo_formset.is_valid()
+                repo_formset.is_valid()
                 and external_resource_formset.is_valid()
                 and (tag_formset.is_valid() if tag_formset else True)
             )
@@ -167,29 +162,40 @@ def manage_project(request, slug=None, template="admin_project.html"):
                 for locale in locales:
                     ProjectLocale.objects.get_or_create(project=project, locale=locale)
 
+                project_locales = ProjectLocale.objects.filter(project=project)
+
                 # Update readonly flags
                 locales_readonly_pks = [l.pk for l in locales_readonly_form]
-                project_locales = ProjectLocale.objects.filter(project=project)
                 project_locales.exclude(locale__pk__in=locales_readonly_pks).update(
                     readonly=False
                 )
-                project_locales.filter(locale__pk__in=locales_readonly_pks,).update(
+                project_locales.filter(locale__pk__in=locales_readonly_pks).update(
                     readonly=True
                 )
 
-                subpage_formset.save()
+                # Update pretranslate flags
+                locales_pretranslate_form = form.cleaned_data.get(
+                    "locales_pretranslate", []
+                )
+                locales_pretranslate_pks = [l.pk for l in locales_pretranslate_form]
+                project_locales.exclude(locale__pk__in=locales_pretranslate_pks).update(
+                    pretranslation_enabled=False
+                )
+                project_locales.filter(locale__pk__in=locales_pretranslate_pks).update(
+                    pretranslation_enabled=True
+                )
+
                 repo_formset.save()
                 external_resource_formset.save()
                 if tag_formset:
                     tag_formset.save()
 
                 # If the data source is database and there are new strings, save them.
-                if project.data_source == "database":
+                if project.data_source == Project.DataSource.DATABASE:
                     _save_new_strings(project, request.POST.get("new_strings", ""))
                     _create_or_update_translated_resources(project, locales)
 
                 # Properly displays formsets, but removes errors (if valid only)
-                subpage_formset = SubpageInlineFormSet(instance=project)
                 repo_formset = RepositoryInlineFormSet(instance=project)
                 external_resource_formset = ExternalResourceInlineFormSet(
                     instance=project
@@ -209,16 +215,20 @@ def manage_project(request, slug=None, template="admin_project.html"):
             project = Project.objects.get(slug=slug)
             pk = project.pk
             form = ProjectForm(instance=project)
-            subpage_formset = SubpageInlineFormSet(instance=project)
             repo_formset = RepositoryInlineFormSet(instance=project)
             tag_formset = (
                 TagInlineFormSet(instance=project) if project.tags_enabled else None
             )
             external_resource_formset = ExternalResourceInlineFormSet(instance=project)
             locales_readonly = Locale.objects.filter(
-                project_locale__readonly=True, project_locale__project=project,
+                project_locale__readonly=True,
+                project_locale__project=project,
             )
             locales_selected = project.locales.exclude(pk__in=locales_readonly)
+            locales_pretranslate = Locale.objects.filter(
+                project_locale__pretranslation_enabled=True,
+                project_locale__project=project,
+            )
             subtitle = "Edit project"
         except Project.DoesNotExist:
             form = ProjectForm(initial={"slug": slug})
@@ -236,23 +246,32 @@ def manage_project(request, slug=None, template="admin_project.html"):
             }
         )
 
-    locales_available = Locale.objects.exclude(pk__in=locales_selected)
+    locales_available = Locale.objects.exclude(pk__in=locales_readonly).exclude(
+        pk__in=locales_selected
+    )
+
+    locales_pretranslate_available = locales_selected.exclude(
+        pk__in=locales_pretranslate
+    )
 
     # Admins reason in terms of locale codes (see bug 1394194)
     locales_readonly = locales_readonly.order_by("code")
     locales_selected = locales_selected.order_by("code")
     locales_available = locales_available.order_by("code")
+    locales_pretranslate = locales_pretranslate.order_by("code")
+    locales_pretranslate_available = locales_pretranslate_available.order_by("code")
 
     data = {
         "slug": slug,
         "form": form,
-        "subpage_formset": subpage_formset,
         "repo_formset": repo_formset,
         "tag_formset": tag_formset,
         "external_resource_formset": external_resource_formset,
         "locales_readonly": locales_readonly,
         "locales_selected": locales_selected,
         "locales_available": locales_available,
+        "locales_pretranslate": locales_pretranslate,
+        "locales_pretranslate_available": locales_pretranslate_available,
         "subtitle": subtitle,
         "pk": pk,
         "project": project,
@@ -286,28 +305,29 @@ def _get_project_strings_csv(project, entities, output):
 
     :arg Project project: the project from which to take strings
     :arg list entities: the list of all entities of the project
-    :arg buffer output: a buffer to which the CSV writed will send its data
+    :arg buffer output: a buffer to which the CSV writer will send its data
 
     :returns: the same output object with the CSV data
 
     """
     locales = Locale.objects.filter(project_locale__project=project)
     translations = (
-        Translation.objects.filter(entity__resource__project=project, approved=True,)
+        Translation.objects.filter(
+            entity__resource__project=project,
+            approved=True,
+        )
         .prefetch_related("locale")
         .prefetch_related("entity")
     )
-    all_data = dict((x.id, {"source": x.string}) for x in entities)
+    all_data = {x.id: {"source": x.string} for x in entities}
 
     for translation in translations:
         all_data[translation.entity.id][translation.locale.code] = translation.string
 
-    writer = csv.writer(output)
     headers = ["source"] + [x.code for x in locales]
-    writer.writerow(headers)
-    for string in all_data.values():
-        row = [string.get(key, "") for key in headers]
-        writer.writerow(row)
+    writer = csv.DictWriter(output, fieldnames=headers)
+    writer.writeheader()
+    writer.writerows(all_data.values())
 
     return output
 
@@ -326,10 +346,15 @@ def _get_resource_for_database_project(project):
 
     """
     try:
-        return Resource.objects.get(project=project,)
+        return Resource.objects.get(
+            project=project,
+        )
     except Resource.DoesNotExist:
         # There's no resource for that project yet, create one.
-        resource = Resource(path="database", project=project,)
+        resource = Resource(
+            path="database",
+            project=project,
+        )
         resource.save()
         return resource
     except Resource.MultipleObjectsReturned:
@@ -378,7 +403,9 @@ def _save_new_strings(project, source):
 
 
 def _create_or_update_translated_resources(
-    project, locales=None, resource=None,
+    project,
+    locales=None,
+    resource=None,
 ):
     if locales is None:
         locales = Locale.objects.filter(project_locale__project=project)
@@ -388,7 +415,8 @@ def _create_or_update_translated_resources(
 
     for locale in locales:
         tr, created = TranslatedResource.objects.get_or_create(
-            locale_id=locale.pk, resource=resource,
+            locale_id=locale.pk,
+            resource=resource,
         )
         tr.calculate_stats()
 
@@ -409,7 +437,7 @@ def manage_project_strings(request, slug=None):
     except Project.DoesNotExist:
         raise Http404
 
-    if project.data_source != "database":
+    if project.data_source != Project.DataSource.DATABASE:
         return HttpResponseForbidden(
             "Project %s's strings come from a repository, managing strings is forbidden."
             % project.name

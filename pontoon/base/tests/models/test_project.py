@@ -1,14 +1,11 @@
-from __future__ import absolute_import
-
 import functools
 import os
+from unittest.mock import patch
 
 import pytest
 from django.contrib.auth.models import AnonymousUser
 
-from mock import patch
-
-from pontoon.base.models import ProjectLocale, Project
+from pontoon.base.models import ProjectLocale, Project, Repository
 from pontoon.test.factories import (
     ChangedEntityLocaleFactory,
     EntityFactory,
@@ -18,34 +15,6 @@ from pontoon.test.factories import (
     ProjectFactory,
     LocaleFactory,
 )
-
-
-@pytest.mark.django_db
-def test_project_commit_no_repos(project_a):
-    """can_commit should be False if there are no repos."""
-
-    assert project_a.repositories.count() == 0
-    assert not project_a.can_commit
-
-
-@pytest.mark.django_db
-def test_project_commit_false(project_a, repo_file):
-    """
-    can_commit should be False if there are no repo xthat can be
-    committed to.
-    """
-    assert project_a.repositories.first().type == "file"
-    assert not project_a.can_commit
-
-
-@pytest.mark.django_db
-def test_project_commit_true(project_a, repo_git):
-    """
-    can_commit should be True if there is a repo that can be
-    committed to.
-    """
-    assert project_a.repositories.first().type == "git"
-    assert project_a.can_commit
 
 
 @pytest.mark.django_db
@@ -60,8 +29,8 @@ def test_project_type_multi_repos(project_a, repo_git, repo_hg):
     If a project has repos, return the type of the repo created
     first.
     """
-    assert project_a.repositories.first().type == "git"
-    assert project_a.repository_type == "git"
+    assert project_a.repositories.first().type == Repository.Type.GIT
+    assert project_a.repository_type == Repository.Type.GIT
 
 
 @pytest.mark.django_db
@@ -80,7 +49,11 @@ def test_project_repo_for_path(project_a):
     the given path.
     """
     repos = [
-        RepositoryFactory.create(type="file", project=project_a, url="testrepo%s" % i,)
+        RepositoryFactory.create(
+            type="file",
+            project=project_a,
+            url="testrepo%s" % i,
+        )
         for i in range(0, 3)
     ]
     path = os.path.join(repos[1].checkout_path, "foo", "bar")
@@ -104,7 +77,8 @@ def test_project_needs_sync(project_a, project_b, locale_a):
     assert project_b.unsynced_locales == []
     del project_b.unsynced_locales
     ProjectLocaleFactory.create(
-        project=project_b, locale=locale_a,
+        project=project_b,
+        locale=locale_a,
     )
     assert project_b.needs_sync == [locale_a]
 
@@ -140,7 +114,7 @@ def public_project():
 
 @pytest.fixture
 def private_project():
-    yield ProjectFactory.create(visibility="private")
+    yield ProjectFactory.create(visibility=Project.Visibility.PRIVATE)
 
 
 @pytest.mark.parametrize(

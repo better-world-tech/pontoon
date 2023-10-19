@@ -10,38 +10,47 @@
   margin-left: 2px;
 }
 
+.request-projects {
+  margin-left: 20px;
+}
+
 /* Bug 1468997 */
 .request-team {
   display: none;
 }
 
 .request-team:before {
-  content: "Request new team";
+  content: 'Request new team';
 }
 
 .request-team.back:after {
-  content: "Back to enabled teams";
+  content: 'Back to enabled teams';
+}
+
+.request-pretranslation:before {
+  content: 'Request pretranslation';
 }
 
 .request-projects:before {
-  content: "Request more projects";
+  content: 'Request more projects';
 }
 
+.request-pretranslation.back:after,
 .request-projects.back:after {
-  content: "Back to enabled projects";
+  content: 'Back to enabled projects';
 }
 
 .request-teams:before {
-  content: "Request new language";
+  content: 'Request new language';
 }
 
 .request-teams.back:after {
-  content: "Back to enabled languages";
+  content: 'Back to enabled languages';
 }
 
 .request-toggle:after,
 .request-toggle.back:before {
-  content: "";
+  content: '';
 }
 
 #request-team-form {
@@ -56,14 +65,28 @@
 
 #request-item-note p {
   font-style: italic;
-  color: #AAAAAA;
+  color: var(--light-grey-7);
   text-align: center;
   display: block;
 }
 
-#request-item {
+.items.request #request-item-note p.locale-projects,
+.items.requesting-pretranslation #request-item-note p.pretranslation {
+  display: block;
+}
+
+.items.request #request-item-note p.pretranslation,
+.items.requesting-pretranslation #request-item-note p.locale-projects {
   display: none;
-  background: #7BC876;
+}
+
+#request-item-note p a {
+  color: var(--light-green-1);
+}
+
+.request-item {
+  display: none;
+  background: var(--light-green-1);
   border: none;
   border-radius: 3px;
   margin-top: 15px;
@@ -72,8 +95,8 @@
   width: 100%;
 }
 
-#request-item.confirmed {
-  background: #FED271;
+.request-item.confirmed {
+  background: var(--mustard-yellow);
 }
 
 #team-form {
@@ -91,9 +114,9 @@
 }
 
 #team-form .field input {
-  color: #FFFFFF;
-  background: #333941;
-  border: 1px solid #4d5967;
+  color: var(--white-1);
+  background: var(--dark-grey-1);
+  border: 1px solid var(--grey-3);
   border-radius: 3px;
   float: none;
   width: 480px;
@@ -118,7 +141,8 @@
   display: table-cell;
 }
 
-.items.request .item-list th.check {
+.items.request .item-list th.check,
+.items.requesting-pretranslation .item-list th.check {
   text-align: right;
   width: auto;
 }
@@ -130,6 +154,7 @@
 }
 
 .items.request .item-list .check,
+.items.requesting-pretranslation .item-list .check,
 .items.request .item-list .radio {
   cursor: pointer;
   display: block;
@@ -137,7 +162,7 @@
 
 .item-list td.check,
 .item-list td.radio {
-  color: #3F4752;
+  color: var(--dark-grey-2);
   float: right;
   font-size: 16px;
   height: 47px;
@@ -149,24 +174,23 @@
 }
 
 .item-list td.radio {
-  color: #4d5967;
+  color: var(--grey-3);
 }
 
-
 .item-list td.check:before {
-  content: "";
+  content: '';
   display: block;
   margin-top: 16px;
 }
 
 .item-list td.check:hover:before,
 .item-list td.check.enabled:before {
-  content: "";
-  color: #7BC876;
+  content: '';
+  color: var(--light-green-1);
 }
 
 .item-list td.check.enabled:before {
-  content: "";
+  content: '';
 }
 
 .item-list td.radio:before {
@@ -176,11 +200,16 @@
 
 .item-list td.radio:hover:before,
 .item-list td.radio.enabled:before {
-  color: #7BC876;
+  color: var(--light-green-1);
 }
 
+.items.requesting-pretranslation .item-list .deadline,
 .items.request .item-list .latest-activity,
 .items.request .item-list .progress,
 .items.request .item-list .unreviewed-status {
   display: none;
+}
+
+.items.requesting-pretranslation .item-list .progress {
+  width: 340px;
 }

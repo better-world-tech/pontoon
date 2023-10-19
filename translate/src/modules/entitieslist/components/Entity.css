@@ -1,0 +1,114 @@
+.entity {
+  color: var(--white-1);
+  cursor: pointer;
+  line-height: 2rem;
+  padding: 10px 25px 10px 43px;
+  position: relative;
+  vertical-align: baseline;
+  margin: 0;
+  border: 0;
+  outline: 0;
+  font-size: 100%;
+}
+
+.entity.checked,
+.entity.selected,
+.entity.sibling:hover,
+.entity:hover {
+  background-color: var(--dark-grey-1);
+}
+
+.entity > div {
+  line-height: 20px;
+}
+
+.entity mark.search {
+  color: var(--orange-1);
+  font-weight: normal;
+  font-style: inherit;
+  background: var(--brown-1);
+  border-radius: 2px;
+}
+
+.entity .source-string,
+.entity .translation-string {
+  display: inline-block;
+  margin: 0;
+  padding-bottom: 3px;
+  width: 100%;
+  vertical-align: top;
+  word-wrap: break-word;
+}
+
+.entity .translation-string {
+  color: var(--light-grey-7);
+  min-height: 20px;
+  text-align: start;
+}
+
+.entity .translation-string[data-script='Latin'],
+.entity .translation-string[data-script='Greek'],
+.entity .translation-string[data-script='Cyrillic'],
+.entity .translation-string[data-script='Vietnamese'] {
+  font-style: italic;
+}
+
+/* Make selection area bigger and fit the entire row for easier use */
+.entity > .status {
+  margin: -13px -13px -13px -16px;
+  padding: 13px 13px 13px 16px;
+  font-size: 16px;
+}
+
+.entity .status.fa {
+  left: 16px;
+  top: 13px;
+  position: absolute;
+}
+
+.entity .status:before {
+  color: var(--blue-2);
+  content: '';
+}
+
+.entity.batch-editable .status:hover:before {
+  content: '';
+}
+
+.entity.batch-editable.checked > .status:before {
+  content: '';
+}
+
+.entity.approved .status:before {
+  color: var(--light-green-1);
+}
+
+.entity.pretranslated .status:before {
+  color: var(--neon-green);
+}
+
+.entity.errors .status:before {
+  color: var(--red-pink);
+}
+
+.entity.warnings .status:before {
+  color: var(--orange-1);
+}
+
+.entity.sibling {
+  background-color: var(--grey-3);
+}
+
+.entity .sibling-entities-icon {
+  color: var(--light-grey-7);
+  left: 17px;
+  top: 39px;
+  position: absolute;
+  margin: 0 -13px -13px -17px;
+  padding: 0 13px 13px 17px;
+  font-size: 14px;
+}
+
+.entity .sibling-entities-icon:hover {
+  color: var(--light-green-1);
+}

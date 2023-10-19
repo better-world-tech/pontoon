@@ -1,0 +1,35 @@
+name: Backend
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - requirements/**
+      - docker**
+      - pontoon/**
+      - .github/workflows/backend.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - requirements/**
+      - docker**
+      - pontoon/**
+      - .github/workflows/backend.yml
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: pytest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build
+        run: make build
+      - name: Pytest
+        run: make pytest
+        env:
+          run_opts: --user=root # volumes are only writable by root on gh
+      - uses: codecov/codecov-action@v3
+        with: { flags: backend }

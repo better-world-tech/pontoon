@@ -6,13 +6,13 @@
 }
 
 .manual-notifications #compose h3 {
-  color: #EBEBEB;
+  color: var(--white-1);
   font-size: 22px;
   letter-spacing: 0;
 }
 
 .manual-notifications #compose h3 .stress {
-  color: #7BC876;
+  color: var(--light-green-1);
 }
 
 .manual-notifications #compose .toolbar {
@@ -30,7 +30,7 @@
 }
 
 .manual-notifications #compose .errors p {
-  color: #F36;
+  color: var(--red-pink);
   text-transform: uppercase;
   visibility: hidden;
 }
@@ -43,7 +43,7 @@
   width: 285px; /* must be same as .shortcuts */
 }
 
-.manual-notifications #compose .locale-selector .shortcuts  {
+.manual-notifications #compose .locale-selector .shortcuts {
   float: left;
   font-size: 14px;
   width: 285px; /* must be same as .menu */
@@ -57,15 +57,15 @@
   float: right;
 }
 
-.manual-notifications #compose .message-wrapper .subtitle  {
-  color: #AAA;
+.manual-notifications #compose .message-wrapper .subtitle {
+  color: var(--light-grey-7);
   float: left;
   text-transform: uppercase;
 }
 
 .manual-notifications #compose textarea {
-  background: #272A2F;
-  color: #EBEBEB;
+  background: var(--black-3);
+  color: var(--white-1);
   font-size: 14px;
   font-weight: 300;
   height: 150px;
@@ -81,5 +81,5 @@
 }
 
 .manual-notifications #sent li.no .icon {
-  color: #272A2F;
+  color: var(--black-3);
 }

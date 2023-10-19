@@ -1,9 +1,8 @@
-from __future__ import absolute_import
-
 import json
 import os
 import tempfile
 from contextlib import contextmanager
+from unittest.mock import patch
 
 from django.contrib.auth.models import (
     Group,
@@ -13,10 +12,8 @@ from django.template.defaultfilters import slugify
 from django.test import TestCase as BaseTestCase, Client as BaseClient
 
 import factory
-from django_nose.tools import assert_equal
 from factory import LazyAttribute, Sequence, SubFactory, SelfAttribute
 from factory.django import DjangoModelFactory
-from mock import patch
 
 from pontoon.base.models import (
     ChangedEntityLocale,
@@ -78,9 +75,8 @@ class GroupFactory(DjangoModelFactory):
 
 
 class ProjectFactory(DjangoModelFactory):
-    name = Sequence(lambda n: "Project {0}".format(n))
+    name = Sequence(lambda n: f"Project {n}")
     slug = LazyAttribute(lambda p: slugify(p.name))
-    links = False
 
     class Meta:
         model = Project
@@ -108,8 +104,8 @@ class ProjectFactory(DjangoModelFactory):
 
 class RepositoryFactory(DjangoModelFactory):
     project = SubFactory(ProjectFactory)
-    type = "git"
-    url = Sequence(lambda n: "https://example.com/url_{0}.git".format(n))
+    type = Repository.Type.GIT
+    url = Sequence(lambda n: f"https://example.com/url_{n}.git")
 
     class Meta:
         model = Repository
@@ -117,8 +113,8 @@ class RepositoryFactory(DjangoModelFactory):
 
 class ResourceFactory(DjangoModelFactory):
     project = SubFactory(ProjectFactory)
-    path = Sequence(lambda n: "/fake/path{0}.po".format(n))
-    format = "po"
+    path = Sequence(lambda n: f"/fake/path{n}.po")
+    format = Resource.Format.PO
     total_strings = 1
 
     class Meta:
@@ -126,8 +122,8 @@ class ResourceFactory(DjangoModelFactory):
 
 
 class LocaleFactory(DjangoModelFactory):
-    code = Sequence(lambda n: "en-{0}".format(n))
-    name = Sequence(lambda n: "English #{0}".format(n))
+    code = Sequence(lambda n: f"en-{n}")
+    name = Sequence(lambda n: f"English #{n}")
 
     class Meta:
         model = Locale
@@ -143,7 +139,7 @@ class ProjectLocaleFactory(DjangoModelFactory):
 
 class EntityFactory(DjangoModelFactory):
     resource = SubFactory(ResourceFactory)
-    string = Sequence(lambda n: "string {0}".format(n))
+    string = Sequence(lambda n: f"string {n}")
 
     class Meta:
         model = Entity
@@ -151,8 +147,8 @@ class EntityFactory(DjangoModelFactory):
 
 class PluralEntityFactory(DjangoModelFactory):
     resource = SubFactory(ResourceFactory)
-    string = Sequence(lambda n: "string {0}".format(n))
-    string_plural = Sequence(lambda n: "string plural {0}".format(n))
+    string = Sequence(lambda n: f"string {n}")
+    string_plural = Sequence(lambda n: f"string plural {n}")
 
     class Meta:
         model = Entity
@@ -169,7 +165,7 @@ class ChangedEntityLocaleFactory(DjangoModelFactory):
 class TranslationFactory(DjangoModelFactory):
     entity = SubFactory(EntityFactory)
     locale = SubFactory(LocaleFactory)
-    string = Sequence(lambda n: "translation {0}".format(n))
+    string = Sequence(lambda n: f"translation {n}")
     user = SubFactory(UserFactory)
 
     class Meta:
@@ -181,8 +177,8 @@ class IdenticalTranslationFactory(TranslationFactory):
 
 
 class TranslationMemoryFactory(DjangoModelFactory):
-    source = Sequence(lambda n: "source {0}".format(n))
-    target = Sequence(lambda n: "target {0}".format(n))
+    source = Sequence(lambda n: f"source {n}")
+    target = Sequence(lambda n: f"target {n}")
     entity = SubFactory(EntityFactory, string=SelfAttribute("..source"))
     locale = SubFactory(LocaleFactory)
 
@@ -207,8 +203,8 @@ def assert_redirects(response, expected_url, status_code=302, host=None, secure=
     """
     if host is None:
         host = "{}://{}".format("https" if secure else "http", host or "testserver")
-    assert_equal(response.status_code, status_code)
-    assert_equal(response["Location"], host + expected_url)
+    assert response.status_code == status_code
+    assert response["Location"] == host + expected_url
 
 
 def assert_attributes_equal(original, **expected_attrs):
@@ -221,18 +217,14 @@ def assert_attributes_equal(original, **expected_attrs):
 
     for key, value in expected_attrs.items():
         original_value = getattr(original, key)
-        assert_equal(
-            original_value,
-            value,
-            (
-                "Attribute `{key}` does not match: {original_value} != {value}".format(
-                    key=key, original_value=original_value, value=value
-                )
-            ),
+        assert (
+            original_value == value
+        ), "Attribute `{key}` does not match: {original_value} != {value}".format(
+            key=key, original_value=original_value, value=value
         )
 
 
-class NOT(object):
+class NOT:
     """
     A helper class that compares equal to everything except its given
     values.
@@ -255,7 +247,7 @@ class NOT(object):
         return "<NOT %r>" % self.values
 
 
-class CONTAINS(object):
+class CONTAINS:
     """
     Helper class that is considered equal to any object that contains
     elements the elements passed to it.
@@ -277,7 +269,7 @@ class CONTAINS(object):
         return not self.__eq__(other)
 
     def __repr__(self):
-        return "<CONTAINS {0}>".format(",".join(repr(item) for item in self.items))
+        return "<CONTAINS {}>".format(",".join(repr(item) for item in self.items))
 
 
 def create_tempfile(contents):
@@ -297,7 +289,11 @@ def create_named_tempfile(contents, prefix=None, suffix=None, directory=None):
     directory, and return the path to the created file.
     """
     with tempfile.NamedTemporaryFile(
-        mode="w", prefix=prefix, suffix=suffix, dir=directory, delete=False,
+        mode="w",
+        prefix=prefix,
+        suffix=suffix,
+        dir=directory,
+        delete=False,
     ) as temp:
         temp.write(contents)
         temp.flush()
@@ -309,7 +305,7 @@ def assert_json(response, expected_obj):
     """
     Checks if response contains a expected json object.
     """
-    assert_equal(json.loads(response.content), expected_obj)
+    assert json.loads(response.content) == expected_obj
 
 
 @contextmanager
@@ -320,10 +316,10 @@ def po_file(**entries):
     :return: read-only file object
     """
     po_contents = "\n".join(
-        'msgid "{}"\nmsgstr "{}"'.format(key, val) for key, val in entries.items()
+        f'msgid "{key}"\nmsgstr "{val}"' for key, val in entries.items()
     )
     with tempfile.NamedTemporaryFile("w+", suffix=".po") as fp:
         fp.write(po_contents)
         fp.flush()
 
-        yield open(fp.name, "r")
+        yield open(fp.name)

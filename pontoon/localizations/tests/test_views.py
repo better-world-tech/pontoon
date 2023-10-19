@@ -1,8 +1,6 @@
-from __future__ import absolute_import
+from unittest.mock import patch
 
 import pytest
-
-from mock import patch
 
 from django.urls import reverse
 from django.shortcuts import render
@@ -35,7 +33,7 @@ def test_latest_activity(mock_parts_stats, mock_render, client, project_a, local
             "resource__total_strings": 1,
             "approved_strings": 0,
             "unreviewed_strings": 1,
-            "fuzzy_strings": 0,
+            "pretranslated_strings": 0,
             "strings_with_warnings": 0,
             "strings_with_errors": 0,
             "resource__deadline": None,
@@ -47,7 +45,7 @@ def test_latest_activity(mock_parts_stats, mock_render, client, project_a, local
             "resource__total_strings": 1,
             "approved_strings": 0,
             "unreviewed_strings": 0,
-            "fuzzy_strings": 0,
+            "pretranslated_strings": 0,
             "strings_with_warnings": 0,
             "strings_with_errors": 0,
             "resource__deadline": None,
@@ -75,11 +73,11 @@ def test_latest_activity(mock_parts_stats, mock_render, client, project_a, local
             "resource__total_strings": 1,
             "approved_strings": 0,
             "unreviewed_strings": 1,
-            "fuzzy_strings": 0,
+            "pretranslated_strings": 0,
             "strings_with_errors": 0,
             "strings_with_warnings": 0,
             "chart": {
-                "fuzzy_strings": 0,
+                "pretranslated_strings": 0,
                 "total_strings": 1,
                 "approved_strings": 0,
                 "unreviewed_strings": 1,
@@ -87,7 +85,7 @@ def test_latest_activity(mock_parts_stats, mock_render, client, project_a, local
                 "strings_with_warnings": 0,
                 "approved_share": 0.0,
                 "unreviewed_share": 100.0,
-                "fuzzy_share": 0.0,
+                "pretranslated_share": 0.0,
                 "warnings_share": 0.0,
                 "errors_share": 0.0,
                 "completion_percent": 0,
@@ -102,11 +100,11 @@ def test_latest_activity(mock_parts_stats, mock_render, client, project_a, local
             "resource__total_strings": 1,
             "approved_strings": 0,
             "unreviewed_strings": 0,
-            "fuzzy_strings": 0,
+            "pretranslated_strings": 0,
             "strings_with_errors": 0,
             "strings_with_warnings": 0,
             "chart": {
-                "fuzzy_strings": 0,
+                "pretranslated_strings": 0,
                 "total_strings": 1,
                 "approved_strings": 0,
                 "unreviewed_strings": 0,
@@ -114,7 +112,7 @@ def test_latest_activity(mock_parts_stats, mock_render, client, project_a, local
                 "strings_with_warnings": 0,
                 "approved_share": 0.0,
                 "unreviewed_share": 0.0,
-                "fuzzy_share": 0.0,
+                "pretranslated_share": 0.0,
                 "warnings_share": 0.0,
                 "errors_share": 0.0,
                 "completion_percent": 0,

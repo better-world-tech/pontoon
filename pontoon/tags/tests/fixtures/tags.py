@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import functools
 from collections import OrderedDict
 from datetime import datetime
@@ -26,7 +24,7 @@ def tag_factory():
 
 def _assert_tags(expected, data):
     assert len(expected) == len(data)
-    results = dict((d["slug"], d) for d in data)
+    results = {d["slug"]: d for d in data}
     attrs = [
         "pk",
         "name",
@@ -34,7 +32,7 @@ def _assert_tags(expected, data):
         "total_strings",
         "approved_strings",
         "unreviewed_strings",
-        "fuzzy_strings",
+        "pretranslated_strings",
     ]
     for slug, stats in results.items():
         _exp = expected[slug]
@@ -56,7 +54,10 @@ def _calculate_resource_tags(**kwargs):
     priority = kwargs.get("priority", None)
     resource_tags = {}
     tags_through = Tag.resources.through.objects.values_list(
-        "resource", "tag", "tag__slug", "tag__name",
+        "resource",
+        "tag",
+        "tag__slug",
+        "tag__name",
     )
     if priority is not None:
         if priority is True:
@@ -104,7 +105,7 @@ def _calculate_tags(**kwargs):
     attrs = [
         "approved_strings",
         "unreviewed_strings",
-        "fuzzy_strings",
+        "pretranslated_strings",
     ]
     totals = {}
     resource_attrs = [
@@ -130,7 +131,7 @@ def _calculate_tags(**kwargs):
             key = _slug
         if key not in totals:
             # create a totals[tag] with zeros for this tag
-            totals[key] = dict((attr, 0) for attr in attrs)
+            totals[key] = {attr: 0 for attr in attrs}
             totals[key].update(dict(name=_name, pk=_pk, last_change=None))
         for attr in attrs:
             # add the total for this translated resource to the tags total

@@ -1,9 +1,9 @@
-from __future__ import absolute_import, division
-
 import math
-
+from operator import attrgetter
+from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 from django.db.models import Q
-from django.http import Http404
+from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
 from django.views.generic.detail import DetailView
 
@@ -13,18 +13,27 @@ from pontoon.base.models import (
     ProjectLocale,
     TranslatedResource,
 )
-from pontoon.base.utils import require_AJAX
+from pontoon.base.utils import require_AJAX, get_project_or_redirect
 from pontoon.contributors.views import ContributorsMixin
+from pontoon.insights.utils import get_insights
 from pontoon.tags.utils import TagsTool
 
 
 def localization(request, code, slug):
     """Locale-project overview."""
     locale = get_object_or_404(Locale, code=code)
-    project = get_object_or_404(
-        Project.objects.visible_for(request.user).available(), slug=slug
+
+    project = get_project_or_redirect(
+        slug, "pontoon.localizations.localization", "slug", request.user, code=code
     )
-    project_locale = get_object_or_404(ProjectLocale, locale=locale, project=project,)
+    if isinstance(project, HttpResponseRedirect):
+        return project
+
+    project_locale = get_object_or_404(
+        ProjectLocale,
+        locale=locale,
+        project=project,
+    )
 
     resource_count = len(locale.parts_stats(project)) - 1
 
@@ -36,8 +45,8 @@ def localization(request, code, slug):
             "project": project,
             "project_locale": project_locale,
             "resource_count": resource_count,
-            "tags": (
-                len(TagsTool(projects=[project], locales=[locale], priority=True))
+            "tags_count": (
+                project.tag_set.filter(resources__isnull=False).distinct().count()
                 if project.tags_enabled
                 else None
             ),
@@ -50,9 +59,7 @@ def ajax_resources(request, code, slug):
     """Resources tab."""
     locale = get_object_or_404(Locale, code=code)
     project = get_object_or_404(
-        Project.objects.visible_for(request.user)
-        .available()
-        .prefetch_related("subpage_set"),
+        Project.objects.visible_for(request.user).available(),
         slug=slug,
     )
 
@@ -64,29 +71,8 @@ def ajax_resources(request, code, slug):
     if not len(translatedresources_qs):
         raise Http404
 
-    pages = {}
-    for page in project.subpage_set.all():
-        latest_page_translatedresource = None
-        page_translatedresources_qs = TranslatedResource.objects.filter(
-            resource__in=page.resources.all(), locale=locale
-        ).prefetch_related("resource", "latest_translation__user")
-
-        for page_translatedresource in page_translatedresources_qs:
-            latest = (
-                latest_page_translatedresource.latest_translation
-                if latest_page_translatedresource
-                else None
-            )
-            if latest is None or (
-                page_translatedresource.latest_translation.latest_activity["date"]
-                > latest.latest_activity["date"]
-            ):
-                latest_page_translatedresource = page_translatedresource
-
-        pages[page.name] = latest_page_translatedresource
-
     translatedresources = {s.resource.path: s for s in translatedresources_qs}
-    translatedresources = dict(list(translatedresources.items()) + list(pages.items()))
+    translatedresources = dict(list(translatedresources.items()))
     parts = locale.parts_stats(project)
 
     resource_priority_map = project.resource_priority_map()
@@ -104,7 +90,7 @@ def ajax_resources(request, code, slug):
 
         part["chart"] = {
             "unreviewed_strings": part["unreviewed_strings"],
-            "fuzzy_strings": part["fuzzy_strings"],
+            "pretranslated_strings": part["pretranslated_strings"],
             "strings_with_errors": part["strings_with_errors"],
             "strings_with_warnings": part["strings_with_warnings"],
             "total_strings": part["resource__total_strings"],
@@ -115,8 +101,8 @@ def ajax_resources(request, code, slug):
             "unreviewed_share": round(
                 part["unreviewed_strings"] / part["resource__total_strings"] * 100
             ),
-            "fuzzy_share": round(
-                part["fuzzy_strings"] / part["resource__total_strings"] * 100
+            "pretranslated_share": round(
+                part["pretranslated_strings"] / part["resource__total_strings"] * 100
             ),
             "errors_share": round(
                 part["strings_with_errors"] / part["resource__total_strings"] * 100
@@ -126,7 +112,11 @@ def ajax_resources(request, code, slug):
             ),
             "completion_percent": int(
                 math.floor(
-                    (part["approved_strings"] + part["strings_with_warnings"])
+                    (
+                        part["approved_strings"]
+                        + part["pretranslated_strings"]
+                        + part["strings_with_warnings"]
+                    )
                     / part["resource__total_strings"]
                     * 100
                 )
@@ -155,13 +145,31 @@ def ajax_tags(request, code, slug):
     if not project.tags_enabled:
         raise Http404
 
-    tags_tool = TagsTool(locales=[locale], projects=[project], priority=True,)
+    tags_tool = TagsTool(
+        locales=[locale],
+        projects=[project],
+        priority=True,
+    )
+
+    tags = sorted(tags_tool, key=attrgetter("priority"), reverse=True)
 
     return render(
         request,
         "localizations/includes/tags.html",
-        {"locale": locale, "project": project, "tags": list(tags_tool)},
+        {"locale": locale, "project": project, "tags": tags},
     )
+
+
+@require_AJAX
+def ajax_insights(request, code, slug):
+    """Insights tab."""
+    if not settings.ENABLE_INSIGHTS:
+        raise ImproperlyConfigured("ENABLE_INSIGHTS variable not set in settings.")
+
+    pl = get_object_or_404(ProjectLocale, locale__code=code, project__slug=slug)
+    insights = get_insights(locale=pl.locale, project=pl.project)
+
+    return render(request, "localizations/includes/insights.html", insights)
 
 
 class LocalizationContributorsView(ContributorsMixin, DetailView):

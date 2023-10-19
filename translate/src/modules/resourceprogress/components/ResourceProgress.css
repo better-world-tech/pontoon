@@ -1,0 +1,136 @@
+.progress-chart {
+  float: left;
+  margin: 8px 5px 4px 5px;
+  position: relative;
+}
+
+.progress-chart .selector {
+  cursor: pointer;
+}
+
+.progress-chart .percent {
+  font-weight: bold;
+  left: 0;
+  line-height: 20px;
+  position: absolute;
+  text-align: center;
+  top: 8px;
+  width: 100%;
+}
+
+.progress-chart .percent.unselectable {
+  -moz-user-select: -moz-none;
+  -khtml-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -o-user-select: none;
+  user-select: none;
+}
+
+.progress-chart .percent:after {
+  content: '%';
+  color: var(--light-grey-2);
+  display: block;
+  font-size: 10px;
+  font-weight: 300;
+  line-height: 3px;
+}
+
+.progress-chart .menu {
+  background: var(--black-3);
+  left: 50%;
+  line-height: 18px;
+  margin-left: -200px; /* Must be half the width */
+  padding: 0;
+  position: absolute;
+  text-align: center;
+  top: 48px;
+  width: 400px;
+  z-index: 20;
+}
+
+.progress-chart .menu .main {
+  padding: 10px 12px;
+}
+
+.progress-chart .menu header {
+  margin-bottom: 10px;
+}
+
+.progress-chart .menu header h2 {
+  color: var(--light-grey-2);
+  font-size: 20px;
+  font-weight: 300;
+  margin-bottom: 5px;
+  padding: 4px;
+}
+
+.progress-chart .menu header h2.small {
+  font-size: 14px;
+}
+
+.progress-chart .menu header h2 .value {
+  color: var(--white-1);
+  font-size: 28px;
+  padding: 0 5px;
+}
+
+.progress-chart .menu header h2.small .value {
+  font-size: 20px;
+}
+
+.progress-chart .menu .percent {
+  color: var(--white-1);
+  font-size: 90px;
+  line-height: 100px;
+  top: 140px;
+}
+
+.progress-chart .menu .percent:after {
+  font-size: 30px;
+  line-height: 15px;
+}
+
+.progress-chart .menu .details div {
+  border-top: 5px solid;
+  color: var(--light-grey-7);
+  display: inline-block;
+  margin-right: 1px;
+  width: 79px;
+}
+
+.progress-chart .menu .details div:last-child {
+  margin-right: 0;
+  width: 80px;
+}
+
+.progress-chart .menu .details div.approved {
+  border-color: var(--light-green-1);
+}
+
+.progress-chart .menu .details div.pretranslated {
+  border-color: var(--neon-green);
+}
+
+.progress-chart .menu .details div.warnings {
+  border-color: var(--orange-1);
+}
+
+.progress-chart .menu .details div.errors {
+  border-color: var(--red-pink);
+}
+
+.progress-chart .menu .details div.missing {
+  border-color: var(--blue-2);
+}
+
+.progress-chart .menu .details div .title {
+  font-size: 10px;
+}
+
+.progress-chart .menu .details div .value {
+  color: var(--white-1);
+  font-size: 22px;
+  font-weight: 300;
+  padding: 5px 0 10px;
+}

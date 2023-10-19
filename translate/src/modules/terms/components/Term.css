@@ -1,0 +1,56 @@
+.terms-list .term {
+  border-bottom: 1px solid var(--light-grey-1);
+  cursor: pointer;
+  padding: 10px;
+}
+
+.terms-list .term.cannot-copy {
+  pointer-events: none;
+}
+
+.terms-list .term:not(.cannot-copy):hover {
+  background: var(--dark-grey-1);
+  border-color: var(--light-grey-1);
+}
+
+.terms-list .term .text {
+  color: var(--light-grey-7);
+}
+
+.terms-list .term .part-of-speech {
+  color: var(--light-grey-7);
+  font-size: 11px;
+  font-weight: 300;
+  padding-left: 3px;
+  text-transform: uppercase;
+}
+
+.terms-list .term .part-of-speech::before {
+  content: '•';
+  padding-right: 3px;
+}
+
+.terms-list .term .translate {
+  color: var(--light-green-1);
+  float: right;
+  font-size: 11px;
+  font-weight: 300;
+  pointer-events: auto;
+  text-transform: uppercase;
+}
+
+.terms-list .term .translation {
+  color: var(--white-1);
+}
+
+.terms-list .term .details {
+  color: var(--light-grey-7);
+  font-style: italic;
+  padding: 5px 0 0 15px;
+}
+
+.terms-list .term .usage .title {
+  color: var(--light-green-1);
+  font-size: 11px;
+  margin-right: 3px;
+}

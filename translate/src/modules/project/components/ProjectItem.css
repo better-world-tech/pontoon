@@ -1,0 +1,23 @@
+.project-menu .menu li.no-results,
+.project-menu .menu li a {
+  display: block;
+  padding: 2px 4px;
+}
+
+.project-menu .menu li a:hover {
+  background: var(--dark-grey-2);
+  color: var(--white-1);
+}
+
+.project-menu .menu li a .project {
+  display: inline-block;
+  max-width: 550px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-menu .menu .percent {
+  color: var(--light-green-1);
+  float: right;
+}

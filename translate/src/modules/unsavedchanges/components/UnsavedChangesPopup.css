@@ -1,0 +1,58 @@
+.unsaved-changes {
+  background: var(--black-3);
+  border-top: 1px solid var(--light-grey-1);
+  bottom: 0;
+  box-sizing: border-box;
+  left: 0;
+  line-height: 22px;
+  min-height: 90px;
+  padding: 10px;
+  position: absolute;
+  text-align: left;
+  width: 100%;
+  z-index: 10;
+}
+
+.unsaved-changes .close {
+  background: none;
+  border: none;
+  color: var(--light-grey-7);
+  float: right;
+  font-size: 24px;
+  font-weight: 100;
+  line-height: 22px;
+  margin-top: -3px;
+  padding: 0;
+}
+
+.unsaved-changes .close:hover {
+  color: var(--white-1);
+}
+
+.unsaved-changes .title {
+  color: var(--red-pink);
+  font-size: 14px;
+  font-weight: 300;
+  padding-bottom: 5px;
+}
+
+.unsaved-changes .body {
+  font-style: italic;
+}
+
+.unsaved-changes .anyway {
+  background: var(--red);
+  border: none;
+  border-radius: 3px;
+  bottom: 10px;
+  color: var(--black-3);
+  font-weight: 600;
+  margin-left: 10px;
+  padding: 10px;
+  position: absolute;
+  right: 10px;
+}
+
+.unsaved-changes .anyway:hover {
+  color: var(--white-1);
+}

@@ -1,8 +1,7 @@
-from __future__ import absolute_import
-
 import fnmatch
+from unittest.mock import MagicMock, PropertyMock, patch
+
 import pytest
-from mock import MagicMock, PropertyMock, patch
 
 from django.db.models import QuerySet
 
@@ -84,7 +83,8 @@ def test_util_tags_resources_tool_filtered_data(tag_matrix, tag_test_kwargs):
 
 
 @pytest.mark.parametrize(
-    "kwargs", [dict(), dict(projects=1, path=2)],
+    "kwargs",
+    [dict(), dict(projects=1, path=2)],
 )
 def test_util_tags_resources_tool_params(kwargs):
     resource_tool = TagsResourcesTool(**kwargs)

@@ -10,7 +10,6 @@
 <!-- Server data -->
 <div id="server"
      class="hidden"
-     {% if csrf_token %}data-csrf="{{ csrf_token }}"{% endif %}
      data-url-split="{{ locale.code }}/{{ project.slug }}">
 </div>
 {% endblock %}
@@ -18,6 +17,7 @@
 {% block heading %}
 <section id="heading">
   <div class="container clearfix">
+    {{ HeadingInfo.download_selector(locale.code, project.slug) }}
     <h1>
       {{ HeadingInfo.heading_item(
         title=project.name,
@@ -45,7 +45,7 @@
 
       {% if project.contact %}
         {{ HeadingInfo.details_item(
-          title='Contact person',
+          title='Project manager',
           class='contact-person',
           value=project.contact.name_or_email,
           value_link=url('pontoon.contributors.contributor.username', project.contact.username))
@@ -72,12 +72,12 @@
           icon = 'file',
         )
       }}
-      {% if project.tags_enabled and tags %}
+      {% if project.tags_enabled and tags_count %}
          {{ Menu.item(
            'Tags',
            url('pontoon.localizations.tags', locale.code, project.slug),
            is_active = (current_page == 'tags'),
-           count = tags,
+           count = tags_count,
            icon = 'tag',
          )
       }}
@@ -90,6 +90,16 @@
           icon = 'users',
         )
       }}
+      {% if settings.ENABLE_INSIGHTS %}
+      {{ Menu.item(
+          'Insights',
+          url('pontoon.localizations.insights', locale.code, project.slug),
+          is_active = (current_page == 'insights'),
+          count = False,
+          icon = 'chart-line',
+        )
+      }}
+      {% endif %}
       {{ Menu.item(
           'Project Info',
           url('pontoon.localizations.project-info', locale.code, project.slug),

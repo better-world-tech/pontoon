@@ -1,0 +1,131 @@
+.user-notification {
+  border-top: 1px solid var(--dark-grey-1);
+  cursor: default;
+  padding: 0;
+}
+
+.user-notification:first-child {
+  border-color: var(--black-3);
+}
+
+.user-notification:first-child:hover {
+  border-color: var(--dark-grey-1);
+}
+
+.user-notification.unread {
+  background: var(--dark-grey-2);
+}
+
+.user-notification.read {
+  animation-duration: 1s;
+  animation-name: fadeout-background;
+}
+
+@keyframes fadeout-background {
+  0% {
+    background: var(--dark-grey-2);
+  }
+
+  100% {
+    background: var(--black-3);
+  }
+}
+
+.user-notification .item-content {
+  display: block;
+  padding: 10px;
+}
+
+.user-notification span {
+  color: var(--white-1);
+  float: none;
+}
+
+.user-notification a {
+  color: var(--red-pink);
+  display: inline;
+}
+
+.user-notification .verb {
+  color: var(--white-1);
+  padding: 0 3px;
+}
+
+.user-notification .description ul {
+  list-style: inside;
+  margin-left: 0;
+  padding: 12px 0 0 4px;
+}
+
+.user-notification .message {
+  padding: 10px;
+}
+
+.user-notification .message.trim,
+.user-notification .message.trim p {
+  pointer-events: none;
+  color: var(--light-grey-7);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-notification .item-content:hover .message,
+.user-notification .item-content:hover .message.trim p,
+.user-notification .item-content:hover .message.trim a {
+  color: var(--white-1);
+}
+
+.user-notification .message.trim a {
+  color: var(--light-grey-7);
+}
+
+.user-notification .message.trim p {
+  padding: 0;
+}
+
+/* Users can include HTML tags in their messages */
+.user-notification .message h1,
+.user-notification .message h2,
+.user-notification .message h3,
+.user-notification .message h4,
+.user-notification .message h5,
+.user-notification .message h6 {
+  color: var(--white-1);
+  font-size: 14px;
+  font-style: normal;
+  font-weight: bold;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.user-notification .message h1 {
+  font-size: 18px;
+}
+
+.user-notification .message h2 {
+  font-size: 16px;
+}
+
+.user-notification .message p {
+  padding: 5px 0;
+}
+
+.user-notification .message ol {
+  margin-left: 1.2em;
+}
+
+.user-notification .message ul {
+  list-style: inside;
+}
+/* End message styling */
+
+.user-notification .timeago {
+  color: var(--light-grey-2);
+  display: block;
+  font-size: 11px;
+  font-weight: normal;
+  margin-top: 8px;
+  text-align: right;
+  text-transform: uppercase;
+}

@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from django.utils import timezone
 
 from pontoon.actionlog.models import ActionLog
@@ -50,12 +48,16 @@ def approve_translations(form, user, translations, locale):
 
     """
     invalid_translation_pks = list(
-        translations.filter(approved=False, errors__isnull=False,).values_list(
-            "pk", flat=True
-        )
+        translations.filter(
+            approved=False,
+            errors__isnull=False,
+        ).values_list("pk", flat=True)
     )
 
-    translations = translations.filter(approved=False, errors__isnull=True,)
+    translations = translations.filter(
+        approved=False,
+        errors__isnull=True,
+    )
     changed_translation_pks = list(translations.values_list("pk", flat=True))
 
     latest_translation_pk = None
@@ -63,12 +65,17 @@ def approve_translations(form, user, translations, locale):
         latest_translation_pk = translations.last().pk
 
     count, translated_resources, changed_entities = utils.get_translations_info(
-        translations, locale,
+        translations,
+        locale,
     )
 
     # Log approving actions
     actions_to_log = [
-        ActionLog(action_type="translation:approved", performed_by=user, translation=t,)
+        ActionLog(
+            action_type=ActionLog.ActionType.TRANSLATION_APPROVED,
+            performed_by=user,
+            translation=t,
+        )
         for t in translations
     ]
     ActionLog.objects.bulk_create(actions_to_log)
@@ -81,6 +88,7 @@ def approve_translations(form, user, translations, locale):
         rejected=False,
         rejected_user=None,
         rejected_date=None,
+        pretranslated=False,
         fuzzy=False,
     )
 
@@ -111,13 +119,18 @@ def reject_translations(form, user, translations, locale):
         rejected=False,
     )
     count, translated_resources, changed_entities = utils.get_translations_info(
-        suggestions, locale,
+        suggestions,
+        locale,
     )
     TranslationMemoryEntry.objects.filter(translation__in=suggestions).delete()
 
     # Log rejecting actions
     actions_to_log = [
-        ActionLog(action_type="translation:rejected", performed_by=user, translation=t,)
+        ActionLog(
+            action_type=ActionLog.ActionType.TRANSLATION_REJECTED,
+            performed_by=user,
+            translation=t,
+        )
         for t in translations
     ]
     ActionLog.objects.bulk_create(actions_to_log)
@@ -131,6 +144,7 @@ def reject_translations(form, user, translations, locale):
         approved=False,
         approved_user=None,
         approved_date=None,
+        pretranslated=False,
         fuzzy=False,
     )
 
@@ -164,15 +178,24 @@ def replace_translations(form, user, translations, locale):
     ) = utils.find_and_replace(translations, find, replace, user)
 
     count, translated_resources, changed_entities = utils.get_translations_info(
-        old_translations, locale,
+        old_translations,
+        locale,
     )
 
     # Log rejecting actions
     actions_to_log = [
-        ActionLog(action_type="translation:rejected", performed_by=user, translation=t,)
+        ActionLog(
+            action_type=ActionLog.ActionType.TRANSLATION_REJECTED,
+            performed_by=user,
+            translation=t,
+        )
         for t in old_translations
     ]
     ActionLog.objects.bulk_create(actions_to_log)
+
+    # Remove any TM entries of old translations that will get rejected.
+    # Must be executed before translations set changes.
+    TranslationMemoryEntry.objects.filter(translation__in=old_translations).delete()
 
     # Deactivate and unapprove old translations
     old_translations.update(
@@ -183,15 +206,22 @@ def replace_translations(form, user, translations, locale):
         rejected=True,
         rejected_user=user,
         rejected_date=timezone.now(),
+        pretranslated=False,
         fuzzy=False,
     )
 
     # Create new translations
-    changed_translations = Translation.objects.bulk_create(translations_to_create,)
+    changed_translations = Translation.objects.bulk_create(
+        translations_to_create,
+    )
 
     # Log creating actions
     actions_to_log = [
-        ActionLog(action_type="translation:created", performed_by=user, translation=t,)
+        ActionLog(
+            action_type=ActionLog.ActionType.TRANSLATION_CREATED,
+            performed_by=user,
+            translation=t,
+        )
         for t in changed_translations
     ]
     ActionLog.objects.bulk_create(actions_to_log)

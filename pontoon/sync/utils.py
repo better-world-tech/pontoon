@@ -1,8 +1,5 @@
-from __future__ import absolute_import
-
 import errno
 import os
-import scandir
 
 from pontoon.base.models import Resource
 from pontoon.base.utils import extension_in, first
@@ -51,10 +48,16 @@ def get_parent_directory(path):
 
 def uses_undercore_as_separator(directory):
     """
-    Return True if any subdirectory contains underscore.
+    Return True if the names of folders in a directory contain more '_' than '-'.
     """
+    only_folders = []
     subdirs = os.listdir(directory)
-    return "".join(subdirs).count("_") > "".join(subdirs).count("-")
+
+    for i in subdirs:
+        if os.path.isdir(os.path.join(directory, i)):
+            only_folders.append(i)
+
+    return "".join(only_folders).count("_") > "".join(only_folders).count("-")
 
 
 def directory_contains_resources(directory_path, source_only=False):
@@ -67,7 +70,7 @@ def directory_contains_resources(directory_path, source_only=False):
         If True, only check for source-only formats.
     """
     resource_check = is_source_resource if source_only else is_resource
-    for root, dirnames, filenames in scandir.walk(directory_path):
+    for root, dirnames, filenames in os.walk(directory_path):
         # first() avoids checking past the first matching resource.
         if first(filenames, resource_check) is not None:
             return True
@@ -93,7 +96,7 @@ def locale_directory_path(checkout_path, locale_code, parent_directories=None):
                 possible_paths.append(candidate)
 
     if not possible_paths:
-        for root, dirnames, filenames in scandir.walk(checkout_path):
+        for root, dirnames, filenames in os.walk(checkout_path):
             for locale in locale_code_variants:
                 if locale in dirnames:
                     possible_paths.append(os.path.join(root, locale))
@@ -106,9 +109,7 @@ def locale_directory_path(checkout_path, locale_code, parent_directories=None):
     if possible_paths:
         return possible_paths[0]
 
-    raise IOError(
-        "Directory for locale `{0}` not found".format(locale_code or "source")
-    )
+    raise OSError("Directory for locale `{}` not found".format(locale_code or "source"))
 
 
 def locale_to_source_path(path):

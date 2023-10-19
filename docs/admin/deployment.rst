@@ -10,7 +10,7 @@ For quick and easy deployment without leaving your web browser, click this butto
 
 .. raw:: html
 
-   <a class="reference external image-reference" href="https://heroku.com/deploy?template=https://github.com/mozilla/pontoon/tree/master">
+   <a class="reference external image-reference" href="https://heroku.com/deploy?template=https://github.com/mozilla/pontoon/tree/main">
       <img src="https://www.herokucdn.com/deploy/button.svg">
    </a>
 
@@ -48,7 +48,7 @@ you create:
 .. NOTE::
 
    Alternatively, you can put all variables below in a `dotenv
-   <https://github.com/theskumar/python-dotenv>`_ text file::
+   <https://saurabh-kumar.com/python-dotenv/>`_ text file::
 
       VAR="value 1"
       OTHER_VAR="other value"
@@ -67,7 +67,7 @@ you create:
 
 ``AUTHENTICATION_METHOD``
    The default value is `django`, which allows you to log in via accounts created using `manage.py shell`.
-   Set to 'fxa' if you want to use 'Firefox Accounts' (corresponding FXA_* settings must be set).
+   Set to 'fxa' if you want to use 'Mozilla Accounts' (corresponding FXA_* settings must be set).
    Set to 'github' if you want to use 'GitHub' (corresponding GITHUB_* settings must be set).
    Set to 'gitlab' if you want to use 'GitLab' (corresponding GITLAB_* settings must be set if required).
    Set to 'google' if you want to use 'Google' (corresponding GOOGLE_* settings must be set).
@@ -80,6 +80,10 @@ you create:
 ``CELERYD_MAX_TASKS_PER_CHILD``
    Maximum number of tasks a Celery worker process can execute before it’s
    replaced with a new one. Defaults to 20 tasks.
+
+``DEFAULT_FROM_EMAIL``
+   Optional. Default email address to send emails from. Default value:
+   ``Pontoon <pontoon@hostname>``.
 
 ``DISABLE_COLLECTSTATIC``
    Disables running ``./manage.py collectstatic`` during the build. Should be
@@ -99,9 +103,33 @@ you create:
    production.
    Adds some additional django apps that can be helpful during day to day development.
 
+``EMAIL_HOST``
+   SMTP host (default: ``'smtp.sendgrid.net'``)
+
+``EMAIL_HOST_PASSWORD``
+   Password for the SMTP connection.
+
+``EMAIL_HOST_USER``
+   Username for the SMTP connection (default: ``'apikey'``).
+
+``EMAIL_PORT``
+   SMTP port (default: ``587``)
+
+``EMAIL_USE_TLS``
+   Use explicit TLS for the SMTP connection (default: ``True``)
+
+``EMAIL_USE_SSL``
+   Use implicit TLS for the SMTP connection (default: ``False``)
+
 ``ENABLE_BUGS_TAB``
    Optional. Enables Bugs tab on team pages, which pulls team data from
    bugzilla.mozilla.org. Specific for Mozilla deployments.
+
+``ENABLE_INSIGHTS``
+   Optional. Enables Insights pages, which present data that needs
+   to be collected by the :ref:`collect-insights` scheduled job. It is advised
+   to run the job at least once before enabling the tab, otherwise the content
+   will be empty. See `the spec`_ for more information.
 
 ``ERROR_PAGE_URL``
    Optional. URL to the page displayed to your users when the application encounters
@@ -111,11 +139,12 @@ you create:
    Optional. Set your `Google Analytics key`_ to use Google Analytics.
 
 ``GOOGLE_TRANSLATE_API_KEY``
-   Optional. Set your `Google Cloud Translation API key`_ to use machine translation
-   by Google.
+   Optional. Set your `Google Cloud Translation API`_ key to use generic machine
+   translation engine by Google.
 
-``LOCALE_REQUEST_FROM_EMAIL``
-   Optional. Requests for new project locales are sent from this email.
+``GOOGLE_AUTOML_PROJECT_ID``
+   Optional. Set your `Google Cloud AutoML Translation`_ model ID to use custom machine
+   translation engine by Google.
 
 ``MAINTENANCE_PAGE_URL``
    Optional. URL to the page displayed to your users when the application is placed
@@ -124,8 +153,12 @@ you create:
 ``MANUAL_SYNC``
    Optional. Enable Sync button in project Admin.
 
+``MEDIA_ROOT``
+   Optional. The absolute path of the "media" folder the projects will be
+   cloned into (it is located next to the "pontoon" Python module by default).
+
 ``MICROSOFT_TRANSLATOR_API_KEY``
-   Optional. Set your `Microsoft Translator API key`_ to use machine translation
+   Optional. Set your `Microsoft Translator API`_ key to use machine translation
    by Microsoft.
 
 ``NEW_RELIC_API_KEY``
@@ -138,6 +171,10 @@ you create:
 
 ``PROJECT_MANAGERS``
    Optional. A list of project manager email addresses to send project requests to
+
+``PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION``
+   Required. Must be set to ``python``. Needed for Google AutoML Translation.
+   Learn more on `Protocol Buffers Homepage`_.
 
 ``SECRET_KEY``
    Required. Secret key used for sessions, cryptographic signing, etc.
@@ -184,6 +221,11 @@ you create:
    Optional. Hostname to prepend to static resources paths. Useful for serving
    static files from a CDN. Example: ``//asdf.cloudfront.net``.
 
+``SUGGESTION_NOTIFICATIONS_DAY``
+   Optional. Integer representing a day of the week on which the
+   `send_suggestion_notifications` management command will run. 0 represents
+   Monday, 6 represents Sunday. The default value is 4 (Friday).
+
 ``SVN_LD_LIBRARY_PATH``
    Path to prepend to ``LD_LIBRARY_PATH`` when running SVN. This is necessary
    on Heroku because the Python buildpack alters the path in a way that breaks
@@ -212,11 +254,13 @@ you create:
 ``VCS_SYNC_EMAIL``
   Optional. Default committer's email used when committing translations to version control system.
 
+.. _the spec: https://github.com/mozilla/pontoon/blob/HEAD/specs/0108-community-health-dashboard.md
 .. _Heroku Reference: https://devcenter.heroku.com/articles/error-pages#customize-pages
-.. _Firefox Accounts: https://developer.mozilla.org/docs/Mozilla/Tech/Firefox_Accounts/Introduction
-.. _Microsoft Translator API key: http://msdn.microsoft.com/en-us/library/hh454950
+.. _Microsoft Translator API: http://msdn.microsoft.com/en-us/library/hh454950
 .. _Google Analytics key: https://www.google.com/analytics/
-.. _Google Cloud Translation API key: https://cloud.google.com/translate/
+.. _Google Cloud Translation API: https://cloud.google.com/translate/
+.. _Google Cloud AutoML Translation: https://cloud.google.com/translate/
+.. _Protocol Buffers Homepage: https://developers.google.com/protocol-buffers/docs/news/2022-05-06#python-updates
 
 Add-ons
 -------
@@ -233,8 +277,17 @@ Pontoon is designed to run with the following add-ons enabled:
 It's possible to run with the free tiers of all of these add-ons, but it is
 recommended that, at a minimum, you run the "Standard 0" tier of Postgres.
 
-Cache Add-ons
-~~~~~~~~~~~~~
+SendGrid Add-on
+~~~~~~~~~~~~~~~
+Pontoon uses `SendGrid`_, which expects the following environment variable:
+
+``SENDGRID_PASSWORD``
+   Use SendGrid API key.
+
+.. _SendGrid: https://devcenter.heroku.com/articles/sendgrid
+
+Cache Add-on
+~~~~~~~~~~~~
 Pontoon uses `django-bmemcached`_, which expects the following environment
 variables from the cache add-on:
 
@@ -262,8 +315,8 @@ variables from the cache add-on:
 
 .. _django-bmemcached: https://github.com/jaysonsantos/python-binary-memcached
 
-RabbitMQ Add-ons
-~~~~~~~~~~~~~~~~
+RabbitMQ Add-on
+~~~~~~~~~~~~~~~
 Similar to the cache add-ons, Pontoon expects environment variables from the
 RabbitMQ add-on:
 
@@ -280,6 +333,10 @@ RabbitMQ add-on:
 
 Scheduled Jobs
 --------------
+Pontoon requires several scheduled jobs to run regularly.
+
+Sync Projects
+~~~~~~~~~~~~~
 While internal Pontoon DB can be used for storing localizable strings, Pontoon
 specializes in using version control systems for that purpose. If you choose
 this option as well, you'll need to run the following scheduled job:
@@ -291,6 +348,62 @@ this option as well, you'll need to run the following scheduled job:
 It's recommended to run this job at least once an hour. It commits any string
 changes in the database to the remote VCS servers associated with each project,
 and pulls down the latest changes to keep the database in sync.
+
+Send Deadline Notifications
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Pontoon allows you to set deadlines for projects. This job sends deadline
+reminders to contributors of projects when they are due in 7 days. If 2 days
+before the deadline project still isn't complete for the contributor's locale,
+notifications are sent again. The command is designed to run daily.
+
+.. code-block:: bash
+
+   ./manage.py send_deadline_notifications
+
+Send Suggestion Notifications
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+This job sends notifications about newly created unreviewed suggestions that
+were submitted, unapproved or unrejected in the last 7 days. Recipients of
+notifications are users with permission to review them, as well as authors of
+any previous translations or comments of the same string. The command is
+designed to run on a weekly basis.
+
+.. code-block:: bash
+
+   ./manage.py send_suggestion_notifications
+
+Send Review Notifications
+~~~~~~~~~~~~~~~~~~~~~~~~~
+This job sends notifications about newly reviewed (approved or rejected)
+suggestions to the authors of those suggestions.
+
+The command is designed to run on a daily basis.
+
+.. code-block:: bash
+
+   ./manage.py send_review_notifications
+
+.. _collect-insights:
+
+Collect Insights
+~~~~~~~~~~~~~~~~
+The Insights tab in the dashboards presents data that cannot be retrieved from
+the existing data models efficiently upon each request. This job gathers all
+the required data and stores it in a dedicated denormalized data model. The job
+is designed to run in the beginning of the day, every day.
+
+.. code-block:: bash
+
+   ./manage.py collect_insights
+
+Sync Log Retention
+~~~~~~~~~~~~~~~~~~
+You may also optionally run the ``clear_old_sync_logs`` management command on a
+schedule to remove sync logs from the database that are over 90 days old:
+
+.. code-block:: bash
+
+   ./manage.py clear_old_sync_logs
 
 Provisioning Workers
 ~~~~~~~~~~~~~~~~~~~~
@@ -304,15 +417,6 @@ you'll want to provision at least one ``worker`` dyno:
    heroku ps:scale worker=1
 
 .. _Celery: http://www.celeryproject.org/
-
-Sync Log Retention
-~~~~~~~~~~~~~~~~~~
-You may also optionally run the ``clear_old_sync_logs`` management command on a
-schedule to remove sync logs from the database that are over 90 days old:
-
-.. code-block:: bash
-
-   ./manage.py clear_old_sync_logs
 
 Database Migrations
 -------------------

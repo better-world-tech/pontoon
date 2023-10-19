@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-from __future__ import absolute_import, unicode_literals
-
 import pytest
 
 from django.urls import reverse
@@ -27,7 +24,9 @@ from pontoon.test.factories import (
 
 @pytest.mark.django_db
 def test_manage_project_strings(client):
-    project = ProjectFactory.create(data_source="database", repositories=[])
+    project = ProjectFactory.create(
+        data_source=Project.DataSource.DATABASE, repositories=[]
+    )
     url = reverse("pontoon.admin.project.strings", args=(project.slug,))
 
     # Test with anonymous user.
@@ -67,7 +66,9 @@ def test_manage_project_strings_bad_request(client_superuser):
 @pytest.mark.django_db
 def test_manage_project_strings_new(admin, client_superuser, locale_a):
     project = ProjectFactory.create(
-        data_source="database", repositories=[], locales=[locale_a],
+        data_source=Project.DataSource.DATABASE,
+        repositories=[],
+        locales=[locale_a],
     )
     url = reverse("pontoon.admin.project.strings", args=(project.slug,))
 
@@ -110,10 +111,13 @@ def test_manage_project_strings_new(admin, client_superuser, locale_a):
 @pytest.mark.django_db
 def test_manage_project_strings_existing_resource(client_superuser, locale_a):
     project = ProjectFactory.create(
-        data_source="database", repositories=[], locales=[locale_a],
+        data_source=Project.DataSource.DATABASE,
+        repositories=[],
+        locales=[locale_a],
     )
     ResourceFactory.create(
-        path="not_database", project=project,
+        path="not_database",
+        project=project,
     )
     url = reverse("pontoon.admin.project.strings", args=(project.slug,))
 
@@ -145,7 +149,7 @@ def test_manage_project_strings_translated_resource(client_superuser):
         LocaleFactory.create(code="gs", name="Geonosian"),
     ]
     project = ProjectFactory.create(
-        data_source="database", locales=locales, repositories=[]
+        data_source=Project.DataSource.DATABASE, locales=locales, repositories=[]
     )
     locales_count = len(locales)
     _create_or_update_translated_resources(project, locales)
@@ -190,9 +194,10 @@ def test_manage_project_strings_translated_resource(client_superuser):
 
 @pytest.mark.django_db
 def test_manage_project_strings_new_all_empty(client_superuser):
-    """Test that sending empty data doesn't create empty strings in the database.
-    """
-    project = ProjectFactory.create(data_source="database", repositories=[])
+    """Test that sending empty data doesn't create empty strings in the database."""
+    project = ProjectFactory.create(
+        data_source=Project.DataSource.DATABASE, repositories=[]
+    )
     url = reverse("pontoon.admin.project.strings", args=(project.slug,))
 
     # Test sending an empty batch of strings.
@@ -207,7 +212,9 @@ def test_manage_project_strings_new_all_empty(client_superuser):
 
 @pytest.mark.django_db
 def test_manage_project_strings_list(client_superuser):
-    project = ProjectFactory.create(data_source="database", repositories=[])
+    project = ProjectFactory.create(
+        data_source=Project.DataSource.DATABASE, repositories=[]
+    )
     resource = ResourceFactory.create(project=project)
     nb_entities = 2
     entities = EntityFactory.create_batch(nb_entities, resource=resource)
@@ -240,7 +247,10 @@ def test_manage_project_strings_list(client_superuser):
     assert b"string 0" not in response.content
     assert b"string 1" not in response.content  # It's been removed.
 
-    total = Entity.objects.filter(resource=resource, obsolete=False,).count()
+    total = Entity.objects.filter(
+        resource=resource,
+        obsolete=False,
+    ).count()
     assert total == nb_entities - 1
 
     # Test adding a new string.
@@ -263,12 +273,17 @@ def test_manage_project_strings_list(client_superuser):
     assert b"new string" in response.content
     assert b"adding this entity now" in response.content
 
-    total = Entity.objects.filter(resource=resource, obsolete=False,).count()
+    total = Entity.objects.filter(
+        resource=resource,
+        obsolete=False,
+    ).count()
     assert total == nb_entities
 
     # Verify the new string has the correct order.
     new_string = Entity.objects.filter(
-        resource=resource, obsolete=False, string="new string",
+        resource=resource,
+        obsolete=False,
+        string="new string",
     ).first()
     # The order of the new string should be that of the highest existing order
     # plus one. In our case, we know the highest was simply the other string.
@@ -280,7 +295,9 @@ def test_manage_project_strings_download_csv(client_superuser):
     locale_kl = LocaleFactory.create(code="kl", name="Klingon")
     locale_gs = LocaleFactory.create(code="gs", name="Geonosian")
     project = ProjectFactory.create(
-        data_source="database", locales=[locale_kl, locale_gs], repositories=[]
+        data_source=Project.DataSource.DATABASE,
+        locales=[locale_kl, locale_gs],
+        repositories=[],
     )
 
     url = reverse("pontoon.admin.project.strings", args=(project.slug,))
@@ -296,7 +313,7 @@ def test_manage_project_strings_download_csv(client_superuser):
     # Test downloading the data.
     response = client_superuser.get(url, {"format": "csv"})
     assert response.status_code == 200
-    assert response._headers["content-type"] == ("Content-Type", "text/csv")
+    assert response.headers["content-type"] == "text/csv"
 
     # Verify the original content is here.
     assert b"pedestal" in response.content
@@ -356,12 +373,12 @@ def test_manage_project_strings_download_csv(client_superuser):
 
     # Verify the translated content is here.
     assert b"pedestal" in response.content
-    assert "piédestal".encode("utf-8") in response.content
+    assert "piédestal".encode() in response.content
     assert b"Sockel" in response.content
 
     assert b"Mighty" in response.content
     assert b"puissants" in response.content
-    assert "Mächt’ge".encode("utf-8") in response.content
+    assert "Mächt’ge".encode() in response.content
 
 
 @pytest.mark.django_db
@@ -369,7 +386,9 @@ def test_project_add_locale(client_superuser):
     locale_kl = LocaleFactory.create(code="kl", name="Klingon")
     locale_gs = LocaleFactory.create(code="gs", name="Geonosian")
     project = ProjectFactory.create(
-        data_source="database", locales=[locale_kl], repositories=[],
+        data_source=Project.DataSource.DATABASE,
+        locales=[locale_kl],
+        repositories=[],
     )
     _create_or_update_translated_resources(project, [locale_kl])
 
@@ -379,15 +398,10 @@ def test_project_add_locale(client_superuser):
     # or I don't know how to handle that more gracefully.
     form = ProjectForm(instance=project)
     form_data = dict(form.initial)
-    del form_data["width"]
     del form_data["deadline"]
     del form_data["contact"]
     form_data.update(
         {
-            "subpage_set-INITIAL_FORMS": "0",
-            "subpage_set-TOTAL_FORMS": "1",
-            "subpage_set-MIN_NUM_FORMS": "0",
-            "subpage_set-MAX_NUM_FORMS": "1000",
             "externalresource_set-TOTAL_FORMS": "1",
             "externalresource_set-MAX_NUM_FORMS": "1000",
             "externalresource_set-MIN_NUM_FORMS": "0",

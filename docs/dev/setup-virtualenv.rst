@@ -16,7 +16,7 @@ This guide assumes you have already installed and set up the following:
 
 1. Git_
 2. `Python 2.7`_, pip_, and virtualenv_
-3. `Node.js`_ and npm_
+3. `Node.js 14`_ and npm_ v7 or later
 4. `Postgres 9.4 or 9.5`_
 
 These docs assume a Unix-like operating system, although the site should, in
@@ -44,7 +44,7 @@ If you're on Ubuntu 17.04, you can install all the prerequisites using the follo
 
 Installation
 ------------
-1. Clone this repository or your fork_:
+1. Clone this repository_ or your fork_:
 
    .. code-block:: bash
 
@@ -68,8 +68,7 @@ Installation
 
    .. code-block:: bash
 
-      pip install --require-hashes -r requirements/dev.txt
-      pip install --require-hashes -r requirements/test.txt
+      pip install --require-hashes -r requirements/default.txt -r requirements/dev.txt -r requirements/test.txt
 
 4. Create your database, using the following set of commands:
 
@@ -108,12 +107,10 @@ Installation
      your Postgres database. It takes the form
      ``postgres://username:password@server_addr/database_name``.
 
-   - ``SITE_URL`` should be set to the URL you will use to connect to your
-     local development site. Some people prefer to use
-     ``http://127.0.0.1:8000`` instead of ``localhost``. However, should you
-     decide to change the ``SITE_URL``, you also need to request_
-     the new ``FXA_CLIENT_ID`` and ``FXA_SECRET_KEY``, and our in-context demo
-     site ``http://localhost:8000/in-context/`` will require change of base url.
+   - ``SITE_URL`` should be set to the URL you will use to connect to your local development site.
+     Some people prefer to use ``http://127.0.0.1:8000`` instead of ``localhost``.
+     However, should you decide to change the ``SITE_URL``,
+     you also need to request_ the new ``FXA_CLIENT_ID`` and ``FXA_SECRET_KEY``.
 
 6. Initialize your database by running the migrations:
 
@@ -151,11 +148,11 @@ Installation
 
       npm install
 
-11. Run webpack:
+11. Build the tag-admin client:
 
    .. code-block:: bash
 
-      ./node_modules/.bin/webpack -p
+      npm run build
 
 Once you've finished these steps, you should be able to start the site by
 running:
@@ -166,6 +163,7 @@ running:
 
 The site should be available at http://localhost:8000.
 
+.. _repository: https://github.com/mozilla/pontoon
 .. _fork: http://help.github.com/fork-a-repo/
 .. _issue: https://bugs.python.org/issue18378
 .. _request: https://developer.mozilla.org/docs/Mozilla/Tech/Firefox_Accounts/Introduction
@@ -175,14 +173,19 @@ Extra settings
 The following extra settings can be added to your ``.env`` file.
 
 ``GOOGLE_TRANSLATE_API_KEY``
-   Set your `Google Cloud Translation API key`_ to use machine translation by Google.
+   Set your `Google Cloud Translation API`_ key to use generic machine translation
+   engine by Google.
+``GOOGLE_AUTOML_PROJECT_ID``
+   Set your `Google Cloud AutoML Translation`_ model ID to use custom machine
+   translation engine by Google.
 ``MICROSOFT_TRANSLATOR_API_KEY``
-   Set your `Microsoft Translator API key`_ to use machine translation by Microsoft.
+   Set your `Microsoft Translator API`_ key to use machine translation by Microsoft.
 ``GOOGLE_ANALYTICS_KEY``
    Set your `Google Analytics key`_ to use Google Analytics.
 ``MANUAL_SYNC``
    Enable Sync button in project Admin.
 
-.. _Microsoft Translator API key: http://msdn.microsoft.com/en-us/library/hh454950
+.. _Microsoft Translator API: http://msdn.microsoft.com/en-us/library/hh454950
 .. _Google Analytics key: https://www.google.com/analytics/
-.. _Google Cloud Translation API key: https://cloud.google.com/translate/
+.. _Google Cloud Translation API: https://cloud.google.com/translate/
+.. _Google Cloud AutoML Translation: https://cloud.google.com/translate/

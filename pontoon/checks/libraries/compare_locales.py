@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from collections import namedtuple
 
 from compare_locales.checks import getChecker
@@ -30,11 +28,13 @@ class ComparePropertiesEntity(PropertiesEntityMixin):
 
     @property
     def all(self):
-        return u"%s = %s".format(self.key, self.raw_val)
+        return f"%s = %s"
 
     def __repr__(self):
-        return u'ComparePropertiesEntity<key="{}",raw_val="{}",pre_comment="{}">'.format(
-            self.key, self.raw_val, self.pre_comment.all,
+        return 'ComparePropertiesEntity<key="{}",raw_val="{}",pre_comment="{}">'.format(
+            self.key,
+            self.raw_val,
+            self.pre_comment.all,
         )
 
 
@@ -53,13 +53,17 @@ class CompareDTDEntity(DTDEntityMixin):
         else:
             wrap = '"'
 
-        return u"<!ENTITY {key} {wrap}{entity}{wrap}>".format(
-            key=self.key, entity=self.raw_val, wrap=wrap,
+        return "<!ENTITY {key} {wrap}{entity}{wrap}>".format(
+            key=self.key,
+            entity=self.raw_val,
+            wrap=wrap,
         )
 
     def __repr__(self):
-        return u'CompareDTDEntity<key="{}",raw_val="{}",pre_comment="{}">'.format(
-            self.key, self.raw_val, self.pre_comment.all,
+        return 'CompareDTDEntity<key="{}",raw_val="{}",pre_comment="{}">'.format(
+            self.key,
+            self.raw_val,
+            self.pre_comment.all,
         )
 
 
@@ -90,13 +94,25 @@ def cast_to_compare_locales(resource_ext, entity, string):
             ComparePropertiesEntity(
                 entity.key, entity.string, CommentEntity(entity.comment)
             ),
-            ComparePropertiesEntity(entity.key, string, CommentEntity(entity.comment),),
+            ComparePropertiesEntity(
+                entity.key,
+                string,
+                CommentEntity(entity.comment),
+            ),
         )
 
     elif resource_ext == ".dtd":
         return (
-            CompareDTDEntity(entity.key, entity.string, CommentEntity(entity.comment),),
-            CompareDTDEntity(entity.key, string, CommentEntity(entity.comment),),
+            CompareDTDEntity(
+                entity.key,
+                entity.string,
+                CommentEntity(entity.comment),
+            ),
+            CompareDTDEntity(
+                entity.key,
+                string,
+                CommentEntity(entity.comment),
+            ),
         )
 
     elif resource_ext == ".ftl":
@@ -119,13 +135,15 @@ def cast_to_compare_locales(resource_ext, entity, string):
     elif resource_ext == ".xml":
         parser = AndroidParser()
 
-        content = u"""<?xml version="1.0" encoding="utf-8"?>
+        content = """<?xml version="1.0" encoding="utf-8"?>
             <resources>
                 <string name="{key}"><![CDATA[{original}]]></string>
                 <string name="{key}"><![CDATA[{translation}]]></string>
             </resources>
         """.format(
-            key=entity.key, original=entity.string, translation=string,
+            key=entity.key,
+            original=entity.string,
+            translation=string,
         )
 
         parser.readUnicode(content)
@@ -163,7 +181,7 @@ def run_checks(entity, locale_code, string):
         }
         Both keys are optional.
     """
-    resource_ext = ".{}".format(entity.resource.format)
+    resource_ext = f".{entity.resource.format}"
     extra_tests = None
 
     if "mobile/android/base" in entity.resource.path:
@@ -171,7 +189,11 @@ def run_checks(entity, locale_code, string):
         entity.string = escape_quotes(entity.string)
         string = escape_quotes(string)
 
-    source_ent, translation_ent = cast_to_compare_locales(resource_ext, entity, string,)
+    source_ent, translation_ent = cast_to_compare_locales(
+        resource_ext,
+        entity,
+        string,
+    )
 
     checker = getChecker(
         File(entity.resource.path, entity.resource.path, locale=locale_code),
@@ -184,7 +206,11 @@ def run_checks(entity, locale_code, string):
     # Currently, references are required only by DTD files but that may change in the future.
     if checker.needs_reference:
         references = KeyedTuple(
-            CompareDTDEntity(e.key, e.string, e.comment,)
+            CompareDTDEntity(
+                e.key,
+                e.string,
+                e.comment,
+            )
             for e in entity.resource.entities.all()
         )
         checker.set_reference(references)

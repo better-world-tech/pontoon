@@ -1,15 +1,13 @@
-from __future__ import absolute_import
+import urllib.parse
 
 from django import forms
-from six.moves import urllib
 
 from pontoon.base import utils
 from pontoon.batch.actions import ACTIONS_FN_MAP
 
 
 class BatchActionsForm(forms.Form):
-    """Handles the arguments passed to the batch actions view.
-    """
+    """Handles the arguments passed to the batch actions view."""
 
     locale = forms.CharField()
     action = forms.ChoiceField(choices=[(x, x) for x in ACTIONS_FN_MAP.keys()])
@@ -22,7 +20,7 @@ class BatchActionsForm(forms.Form):
 
     def decode_field(self, param_name):
         """
-        The frontend sends quoted form fields to avoid issues with e.g. non breakable spaces.
+        The translate frontend sends quoted form fields to avoid issues with e.g. non breakable spaces.
 
         Related bug: https://bugzilla.mozilla.org/show_bug.cgi?id=1438575
         """

@@ -1,29 +1,33 @@
-from __future__ import absolute_import
-
 import codecs
 import functools
+import io
 import os
+import re
+
 import pytz
 import requests
 import tempfile
 import time
 import zipfile
 
+from collections import defaultdict
 from datetime import datetime, timedelta
-
 from guardian.decorators import permission_required as guardian_permission_required
-
-from django.utils.text import slugify
-from six import BytesIO
-
+from urllib.parse import urljoin
 from xml.sax.saxutils import escape, quoteattr
 
-from django.db.models import Prefetch
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
+from django.db.models import Prefetch, Q
 from django.db.models.query import QuerySet
-from django.http import HttpResponseBadRequest
-from django.shortcuts import get_object_or_404
+from django.http import HttpResponseBadRequest, Http404
+from django.shortcuts import redirect, get_object_or_404
+from django.urls import reverse
 from django.utils import timezone
+from django.utils.text import slugify
 from django.utils.translation import trans_real
+
+UNUSABLE_SEARCH_CHAR = "☠"
 
 
 def split_ints(s):
@@ -66,9 +70,17 @@ def match_attr(collection, **attributes):
     )
 
 
-def aware_datetime(*args, **kwargs):
-    """Return an aware datetime using Django's configured timezone."""
-    return timezone.make_aware(datetime(*args, **kwargs))
+def group_dict_by(list_of_dicts, key):
+    """
+    Group dicts in a list by the given key. Return a defaultdict instance with
+    key used as the key and dict as the value.
+    """
+    group = defaultdict(list)
+
+    for dictionary in list_of_dicts:
+        group[dictionary[key]].append(dictionary)
+
+    return group
 
 
 def extension_in(filename, extensions):
@@ -95,6 +107,13 @@ def get_object_or_none(model, *args, **kwargs):
         return None
 
 
+def is_ajax(request):
+    """
+    Checks whether the given request is an AJAX request.
+    """
+    return request.headers.get("x-requested-with") == "XMLHttpRequest"
+
+
 def require_AJAX(f):
     """
     AJAX request required decorator
@@ -102,7 +121,7 @@ def require_AJAX(f):
 
     @functools.wraps(f)  # Required by New Relic
     def wrap(request, *args, **kwargs):
-        if not request.is_ajax():
+        if not is_ajax(request):
             return HttpResponseBadRequest("Bad Request: Request must be AJAX")
         return f(request, *args, **kwargs)
 
@@ -145,9 +164,10 @@ def _download_file(prefixes, dirnames, vcs_project, relative_path):
                     locale, absolute_path
                 )
                 relative_l10n_path = os.path.relpath(
-                    absolute_l10n_path, vcs_project.locale_directory_paths[locale.code],
+                    absolute_l10n_path,
+                    vcs_project.locale_directory_paths[locale.code],
                 )
-                url = prefix.format(locale_code=relative_l10n_path)
+                url = urljoin(prefix, relative_l10n_path)
             else:
                 url = os.path.join(prefix.format(locale_code=dirname), relative_path)
 
@@ -169,28 +189,17 @@ def _download_file(prefixes, dirnames, vcs_project, relative_path):
             return temp.name
 
 
-def _get_relative_path_from_part(slug, part):
-    """Check if part is a Resource path or Subpage name."""
-    # Avoid circular import; someday we should refactor to avoid.
-    from pontoon.base.models import Subpage
-
-    try:
-        subpage = Subpage.objects.get(project__slug=slug, name=part)
-        return subpage.resources.first().path
-    except Subpage.DoesNotExist:
-        return part
-
-
 def get_download_content(slug, code, part):
     """
     Get content of the file to be downloaded.
 
     :arg str slug: Project slug.
     :arg str code: Locale code.
-    :arg str part: Resource path or Subpage name.
+    :arg str part: Resource path.
     """
     # Avoid circular import; someday we should refactor to avoid.
     from pontoon.sync import formats
+    from pontoon.sync.utils import source_to_locale_path
     from pontoon.sync.vcs.models import VCSProject
     from pontoon.base.models import Entity, Locale, Project, Resource
 
@@ -204,24 +213,31 @@ def get_download_content(slug, code, part):
     )
     isZipable = 1 < len(resources) < 10
     if isZipable:
-        s = BytesIO()
+        s = io.BytesIO()
         zf = zipfile.ZipFile(s, "w")
 
     # Download a single file if project has 1 or >= 10 resources
     else:
-        relative_path = _get_relative_path_from_part(slug, part)
-        resources = [
-            get_object_or_404(Resource, project__slug=slug, path=relative_path)
-        ]
+        resources = [get_object_or_404(Resource, project__slug=slug, path=part)]
+
+    locale_prefixes = project.repositories
+
+    if not project.configuration_file:
+        locale_prefixes = locale_prefixes.filter(
+            permalink_prefix__contains="{locale_code}"
+        )
+
+    locale_prefixes = locale_prefixes.values_list(
+        "permalink_prefix", flat=True
+    ).distinct()
+
+    source_prefixes = project.repositories.values_list(
+        "permalink_prefix", flat=True
+    ).distinct()
 
     for resource in resources:
         # Get locale file
-        locale_prefixes = (
-            project.repositories.filter(permalink_prefix__contains="{locale_code}")
-            .values_list("permalink_prefix", flat=True)
-            .distinct()
-        )
-        dirnames = set([locale.code, locale.code.replace("-", "_")])
+        dirnames = {locale.code, locale.code.replace("-", "_")}
         locale_path = _download_file(
             locale_prefixes, dirnames, vcs_project, resource.path
         )
@@ -230,10 +246,7 @@ def get_download_content(slug, code, part):
 
         # Get source file if needed
         source_path = None
-        if resource.is_asymmetric:
-            source_prefixes = project.repositories.values_list(
-                "permalink_prefix", flat=True
-            ).distinct()
+        if resource.is_asymmetric or resource.format == "xliff":
             dirnames = VCSProject.SOURCE_DIR_NAMES
             source_path = _download_file(
                 source_prefixes, dirnames, vcs_project, resource.path
@@ -264,8 +277,8 @@ def get_download_content(slug, code, part):
 
         for e in entities_qs:
             entities_dict[e.key] = e.translation_set.filter(
-                approved=True, locale=locale
-            )
+                Q(approved=True) | Q(pretranslated=True)
+            ).filter(locale=locale)
 
         for vcs_translation in resource_file.translations:
             key = vcs_translation.key
@@ -279,11 +292,11 @@ def get_download_content(slug, code, part):
             return None, None
 
         if isZipable:
-            zf.write(locale_path, resource.path)
+            zf.write(locale_path, source_to_locale_path(resource.path))
         else:
             with codecs.open(locale_path, "r", "utf-8") as f:
                 content = f.read()
-            filename = os.path.basename(resource.path)
+            filename = os.path.basename(source_to_locale_path(resource.path))
 
         # Remove temporary files
         os.remove(locale_path)
@@ -304,7 +317,7 @@ def handle_upload_content(slug, code, part, f, user):
 
     :arg str slug: Project slug.
     :arg str code: Locale code.
-    :arg str part: Resource path or Subpage name.
+    :arg str part: Resource path.
     :arg UploadedFile f: UploadedFile instance.
     :arg User user: User uploading the file.
     """
@@ -313,7 +326,6 @@ def handle_upload_content(slug, code, part, f, user):
     from pontoon.sync.changeset import ChangeSet
     from pontoon.sync.vcs.models import VCSProject
     from pontoon.base.models import (
-        ChangedEntityLocale,
         Entity,
         Locale,
         Project,
@@ -322,15 +334,16 @@ def handle_upload_content(slug, code, part, f, user):
         Translation,
     )
 
-    relative_path = _get_relative_path_from_part(slug, part)
     project = get_object_or_404(Project, slug=slug)
     locale = get_object_or_404(Locale, code=code)
-    resource = get_object_or_404(Resource, project__slug=slug, path=relative_path)
-
+    resource = get_object_or_404(Resource, project__slug=slug, path=part)
     # Store uploaded file to a temporary file and parse it
     extension = os.path.splitext(f.name)[1]
+    is_messages_json = f.name.endswith("messages.json")
+
     with tempfile.NamedTemporaryFile(
-        prefix="strings" if extension == ".xml" else "", suffix=extension,
+        prefix="strings" if extension == ".xml" else "",
+        suffix=".messages.json" if is_messages_json else extension,
     ) as temp:
         for chunk in f.chunks():
             temp.write(chunk)
@@ -343,7 +356,7 @@ def handle_upload_content(slug, code, part, f, user):
     )
     entities_qs = (
         Entity.objects.filter(
-            resource__project=project, resource__path=relative_path, obsolete=False
+            resource__project=project, resource__path=part, obsolete=False
         )
         .prefetch_related(
             Prefetch(
@@ -395,24 +408,24 @@ def handle_upload_content(slug, code, part, f, user):
         valid_translations = changeset.bulk_check_translations()
         changeset.bulk_create_translation_memory_entries(valid_translations)
 
+        # Remove any TM entries of translations that got rejected
+        changeset.bulk_remove_translation_memory_entries()
+
     TranslatedResource.objects.get(resource=resource, locale=locale).calculate_stats()
 
     # Mark translations as changed
-    changed_entities = {}
-    existing = ChangedEntityLocale.objects.values_list("entity", "locale").distinct()
-    for t in changeset.changed_translations:
-        key = (t.entity.pk, t.locale.pk)
-        # Remove duplicate changes to prevent unique constraint violation
-        if key not in existing:
-            changed_entities[key] = ChangedEntityLocale(
-                entity=t.entity, locale=t.locale
-            )
-
-    ChangedEntityLocale.objects.bulk_create(changed_entities.values())
+    changed_translations_pks = [t.pk for t in changeset.changed_translations]
+    changed_translations = Translation.objects.filter(pk__in=changed_translations_pks)
+    changed_translations.bulk_mark_changed()
 
     # Update latest translation
     if changeset.translations_to_create:
         changeset.translations_to_create[-1].update_latest_translation()
+
+
+def aware_datetime(*args, **kwargs):
+    """Return an aware datetime using Django's configured timezone."""
+    return timezone.make_aware(datetime(*args, **kwargs))
 
 
 def latest_datetime(datetimes):
@@ -453,6 +466,19 @@ def convert_to_unix_time(my_datetime):
     return int(time.mktime(my_datetime.timetuple()) * 1000)
 
 
+def sanitize_xml_input_string(string):
+    """
+    The XML specification (http://www.w3.org/TR/xml11/#charsets) lists a set of Unicode characters
+    that are either illegal or "discouraged". Replace these characters to get valid XML strings
+    """
+
+    illegal_xml_chars_re = re.compile(
+        "[\x00-\x08\x0b\x0c\x0e-\x1F\uD800-\uDFFF\uFFFE\uFFFF]"
+    )
+
+    return illegal_xml_chars_re.sub("", string)
+
+
 def build_translation_memory_file(creation_date, locale_code, entries):
     """
     TMX files will contain large amount of entries and it's impossible to render all the data with
@@ -464,45 +490,46 @@ def build_translation_memory_file(creation_date, locale_code, entries):
                          * key - key of an entity,
                          * source - source string of entity,
                          * target - translated string,
-                         * project_name - name of a project,
                          * project_slug - slugified name of a project,
     """
     yield (
-        u'<?xml version="1.0" encoding="UTF-8"?>'
-        u'\n<tmx version="1.4">'
-        u"\n\t<header"
-        u' adminlang="en-US"'
-        u' creationtoolversion="0.1"'
-        u' creationtool="pontoon"'
-        u' datatype="plaintext"'
-        u' segtype="sentence"'
-        u' o-tmf="plain text"'
-        u' srclang="en-US"'
-        u' creationdate="%(creation_date)s">'
-        u"\n\t</header>"
-        u"\n\t<body>" % {"creation_date": creation_date.isoformat()}
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '\n<tmx version="1.4">'
+        "\n\t<header"
+        ' adminlang="en-US"'
+        ' creationtoolversion="0.1"'
+        ' creationtool="pontoon"'
+        ' datatype="plaintext"'
+        ' segtype="sentence"'
+        ' o-tmf="plain text"'
+        ' srclang="en-US"'
+        ' creationdate="%(creation_date)s">'
+        "\n\t</header>"
+        "\n\t<body>" % {"creation_date": creation_date.isoformat()}
     )
-    for resource_path, key, source, target, project_name, project_slug in entries:
+    for resource_path, key, source, target, project_slug in entries:
         tuid = ":".join((project_slug, resource_path, slugify(key)))
+        source = sanitize_xml_input_string(source)
+        target = sanitize_xml_input_string(target)
+
         yield (
-            u'\n\t\t<tu tuid=%(tuid)s srclang="en-US">'
-            u'\n\t\t\t<tuv xml:lang="en-US">'
-            u"\n\t\t\t\t<seg>%(source)s</seg>"
-            u"\n\t\t\t</tuv>"
-            u"\n\t\t\t<tuv xml:lang=%(locale_code)s>"
-            u"\n\t\t\t\t<seg>%(target)s</seg>"
-            u"\n\t\t\t</tuv>"
-            u"\n\t\t</tu>"
+            '\n\t\t<tu tuid=%(tuid)s srclang="en-US">'
+            '\n\t\t\t<tuv xml:lang="en-US">'
+            "\n\t\t\t\t<seg>%(source)s</seg>"
+            "\n\t\t\t</tuv>"
+            "\n\t\t\t<tuv xml:lang=%(locale_code)s>"
+            "\n\t\t\t\t<seg>%(target)s</seg>"
+            "\n\t\t\t</tuv>"
+            "\n\t\t</tu>"
             % {
                 "tuid": quoteattr(tuid),
                 "source": escape(source),
                 "locale_code": quoteattr(locale_code),
                 "target": escape(target),
-                "project_name": escape(project_name),
             }
         )
 
-    yield (u"\n\t</body>" u"\n</tmx>")
+    yield ("\n\t</body>" "\n</tmx>\n")
 
 
 def get_m2m_changes(current_qs, new_qs):
@@ -535,5 +562,78 @@ def readonly_exists(projects, locale):
         projects = [projects]
 
     return ProjectLocale.objects.filter(
-        project__in=projects, locale=locale, readonly=True,
+        project__in=projects,
+        locale=locale,
+        readonly=True,
     ).exists()
+
+
+def get_search_phrases(search):
+    """
+    Split the search phrase into separate search queries.
+    When the user types a search query without the quotation, e.g.:
+    source file
+    The function splits it into separate search queries:
+    ["source", "file"]
+    It works like OR operator, the search engine is going to search for "source" and "file" in a string.
+
+    When the user types a quoted search query, e.g.:
+    "source file"
+    The function is going to use the full phrase without splitting into separate search queries.
+    It works like AND operator, the search engine is going to search for "source file" in a string.
+
+    :arg str search: search query, e.g. source file, "source file"
+    :returns: A list of substrings to search.
+    """
+    search_list = [
+        x.strip('"').replace(UNUSABLE_SEARCH_CHAR, '"')
+        for x in re.findall(
+            '([^"]\\S*|".+?")\\s*', search.replace('\\"', UNUSABLE_SEARCH_CHAR)
+        )
+    ]
+
+    # Search for `""` and `"` when entered as search terms
+    if search == '""' and not search_list:
+        search_list = ['""']
+
+    if search == '"' and not search_list:
+        search_list = ['"']
+
+    return search_list
+
+
+def is_email(email):
+    try:
+        validate_email(email)
+        return True
+    except ValidationError:
+        return False
+
+
+def get_project_or_redirect(
+    slug, redirect_view_name, slug_arg_name, request_user, **kwargs
+):
+    """
+    Attempts to get a project with the given slug. If the project doesn't exist, it checks if the slug is in the
+    ProjectSlugHistory and if so, it redirects to the current project slug URL. If the old slug is not found in the
+    history, it raises an Http404 error.
+    """
+    # Avoid circular import; someday we should refactor to avoid.
+    from pontoon.base.models import Project, ProjectSlugHistory
+
+    try:
+        project = Project.objects.visible_for(request_user).available().get(slug=slug)
+        return project
+    except Project.DoesNotExist:
+        slug_history = (
+            ProjectSlugHistory.objects.filter(old_slug=slug)
+            .order_by("-created_at")
+            .first()
+        )
+        if slug_history is not None:
+            redirect_kwargs = {slug_arg_name: slug_history.project.slug}
+            redirect_kwargs.update(kwargs)
+            redirect_url = reverse(redirect_view_name, kwargs=redirect_kwargs)
+            return redirect(redirect_url)
+        else:
+            raise Http404

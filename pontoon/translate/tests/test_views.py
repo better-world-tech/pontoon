@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import pytest
 
 from django.urls import reverse
@@ -84,29 +82,33 @@ def test_translate_invalid_locale(client, resource_a):
     """
     # this doesnt seem to redirect as the comment suggests
     response = client.get(
-        "/invalid-locale/%s/%s/" % (resource_a.project.slug, resource_a.path)
+        f"/invalid-locale/{resource_a.project.slug}/{resource_a.path}/"
     )
     assert response.status_code == 404
 
 
 @pytest.mark.django_db
 def test_translate_invalid_project(
-    client, resource_a, locale_a,
+    client,
+    resource_a,
+    locale_a,
 ):
     """If the project is invalid, redirect home."""
     # this doesnt seem to redirect as the comment suggests
-    response = client.get("/%s/invalid-project/%s/" % (locale_a.code, resource_a.path))
+    response = client.get(f"/{locale_a.code}/invalid-project/{resource_a.path}/")
     assert response.status_code == 404
 
 
 @pytest.mark.django_db
 def test_translate_invalid_pl(
-    client, locale_a, project_b,
+    client,
+    locale_a,
+    project_b,
 ):
     """
     If the requested locale is not available for this project,
     redirect home.
     """
     # this doesnt seem to redirect as the comment suggests
-    response = client.get("/%s/%s/path/" % (locale_a.code, project_b.slug))
+    response = client.get(f"/{locale_a.code}/{project_b.slug}/path/")
     assert response.status_code == 404

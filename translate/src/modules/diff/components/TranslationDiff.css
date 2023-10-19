@@ -1,0 +1,22 @@
+.translation p ins,
+.translation p del {
+  border-radius: 2px;
+  white-space: pre-wrap;
+}
+
+.translation p ins {
+  background: var(--forest-green-2);
+  color: var(--light-green-3);
+}
+
+.translation p del {
+  background: var(--purple-pink);
+  color: var(--coral);
+}
+
+.translation p ins mark,
+.translation p del mark {
+  background: transparent;
+  border-color: transparent;
+  margin: 0;
+}

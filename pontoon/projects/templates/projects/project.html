@@ -10,7 +10,6 @@
 <!-- Server data -->
 <div id="server"
      class="hidden"
-     {% if csrf_token %}data-csrf="{{ csrf_token }}"{% endif %}
      data-url-split="projects/{{ project.slug }}"
      data-project="{{ project.slug }}"
      data-locale-projects="{{ project.available_locales_list()|to_json }}">
@@ -42,7 +41,7 @@
 
       {% if project.contact %}
         {{ HeadingInfo.details_item(
-          title='Contact person',
+          title='Project manager',
           class='contact-person',
           value=project.contact.name_or_email,
           value_link=url('pontoon.contributors.contributor.username', project.contact.username))
@@ -51,7 +50,7 @@
     </ul>
 
     {{ HeadingInfo.progress_chart() }}
-    {{ HeadingInfo.progress_chart_legend(project) }}
+    {{ HeadingInfo.progress_chart_legend(chart) }}
   </div>
 </section>
 {% endblock %}
@@ -65,16 +64,16 @@
           'Teams',
           url('pontoon.projects.project', project.slug),
           is_active = (current_page == ''),
-          count = project.locales.count(),
+          count = count,
           icon = 'folder',
         )
       }}
-      {% if project.tags_enabled and tags %}
+      {% if project.tags_enabled and tags_count %}
          {{ Menu.item(
            'Tags',
            url('pontoon.projects.tags', project.slug),
            is_active = (current_page == 'tags'),
-           count = tags,
+           count = tags_count,
            icon = 'tag',
          )
       }}
@@ -87,6 +86,16 @@
           icon = 'users',
         )
       }}
+      {% if settings.ENABLE_INSIGHTS %}
+      {{ Menu.item(
+          'Insights',
+          url('pontoon.projects.insights', project.slug),
+          is_active = (current_page == 'insights'),
+          count = False,
+          icon = 'chart-line',
+        )
+      }}
+      {% endif %}
       {{ Menu.item(
           'Info',
           url('pontoon.projects.info', project.slug),

@@ -1,0 +1,13 @@
+mark.placeable {
+  background: var(--grey-3);
+  border: 1px solid var(--light-grey-1);
+  border-radius: 2px;
+  color: var(--light-grey-6);
+  font-style: normal;
+  font-weight: normal;
+  margin: 0 1px;
+}
+
+mark.placeable [aria-hidden='true'] {
+  user-select: none;
+}

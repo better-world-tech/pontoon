@@ -2,8 +2,6 @@
 Parser and serializer for file formats supported by compare-locales library:
 https://hg.mozilla.org/l10n/compare-locales/
 """
-from __future__ import absolute_import
-
 import logging
 
 from collections import OrderedDict
@@ -28,6 +26,7 @@ class CompareLocalesEntity(VCSTranslation):
 
     def __init__(self, key, string, comment, order):
         self.key = key
+        self.context = key
         self.source_string = string
         self.source_string_plural = ""
         self.strings = (
@@ -58,11 +57,16 @@ class CompareLocalesResource(ParsedResource):
         # source resource entity.
         if source_resource:
             for key, entity in source_resource.entities.items():
-                self.entities[key] = CompareLocalesEntity(entity.key, None, None, 0,)
+                self.entities[key] = CompareLocalesEntity(
+                    entity.key,
+                    None,
+                    None,
+                    0,
+                )
 
         try:
             self.parser.readFile(self.path)
-        except IOError as err:
+        except OSError as err:
             # If the file doesn't exist, but we have a source resource,
             # we can keep going, we'll just not have any translations.
             if source_resource:
@@ -76,7 +80,10 @@ class CompareLocalesResource(ParsedResource):
         for entity in self.parsed_objects:
             if isinstance(entity, parser.Entity):
                 self.entities[entity.key] = CompareLocalesEntity(
-                    entity.key, entity.unwrap(), entity.pre_comment, order,
+                    entity.key,
+                    entity.unwrap(),
+                    entity.pre_comment,
+                    order,
                 )
                 order += 1
 
@@ -87,7 +94,7 @@ class CompareLocalesResource(ParsedResource):
     def save(self, locale):
         if not self.source_resource:
             raise SyncError(
-                "Cannot save resource {0}: No source resource given.".format(self.path)
+                f"Cannot save resource {self.path}: No source resource given."
             )
 
         # A dictionary of new translations

@@ -1,7 +1,6 @@
-from __future__ import absolute_import
+from unittest.mock import MagicMock, patch
 
 import pytest
-from mock import MagicMock, patch
 
 from pontoon.base.models import Translation
 from pontoon.tags.utils import TagsLatestTranslationsTool
@@ -17,7 +16,9 @@ def test_util_tags_stats_tool(tag_data_init_kwargs):
 
 @pytest.mark.django_db
 def test_util_tags_translation_tool_get_data(
-    tag_matrix, calculate_tags_latest, tag_test_kwargs,
+    tag_matrix,
+    calculate_tags_latest,
+    tag_test_kwargs,
 ):
     # for different parametrized kwargs, tests that the calculated
     # latest data matches expectations from long-hand calculation
@@ -50,7 +51,7 @@ def test_util_tags_translation_tool_get_data(
     elif name == "empty":
         pass
     else:
-        raise ValueError("Unsupported assertion type: {}".format(name))
+        raise ValueError(f"Unsupported assertion type: {name}")
 
 
 @patch("pontoon.tags.utils.TagsLatestTranslationsTool.get_data")
@@ -100,7 +101,11 @@ def test_util_tags_translation_tool_data(data_mock):
 
 @pytest.mark.django_db
 def test_util_tags_translation_tool_groupby(
-    tag_matrix, tag_test_kwargs, calculate_tags_latest, user_a, user_b,
+    tag_matrix,
+    tag_test_kwargs,
+    calculate_tags_latest,
+    user_a,
+    user_b,
 ):
     name, kwargs = tag_test_kwargs
 

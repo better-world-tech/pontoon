@@ -1,12 +1,12 @@
-from __future__ import absolute_import
-
 import uuid
-
+from operator import attrgetter
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ImproperlyConfigured
 from django.db import transaction
 from django.db.models import Q
-from django.http import Http404, JsonResponse
+from django.http import Http404, JsonResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
 from django.views.generic.detail import DetailView
 
@@ -15,8 +15,9 @@ from notifications.models import Notification
 from notifications.signals import notify
 
 from pontoon.base.models import Project, Locale
-from pontoon.base.utils import require_AJAX, split_ints
+from pontoon.base.utils import require_AJAX, split_ints, get_project_or_redirect
 from pontoon.contributors.views import ContributorsMixin
+from pontoon.insights.utils import get_insights
 from pontoon.projects import forms
 from pontoon.tags.utils import TagsTool
 
@@ -42,16 +43,31 @@ def projects(request):
 
 def project(request, slug):
     """Project dashboard."""
-    project = get_object_or_404(
-        Project.objects.visible_for(request.user).available(), slug=slug
+    project = get_project_or_redirect(
+        slug, "pontoon.projects.project", "slug", request.user
     )
+    if isinstance(project, HttpResponseRedirect):
+        return project
+
+    project_locales = project.project_locale
+    chart = project
+
+    # Only include filtered teams if provided
+    teams = request.GET.get("teams", "").split(",")
+    filtered_locales = Locale.objects.filter(code__in=teams)
+    if filtered_locales.exists():
+        project_locales = project_locales.filter(locale__in=filtered_locales)
+        chart = project_locales.aggregated_stats()
+
     return render(
         request,
         "projects/project.html",
         {
+            "chart": chart,
+            "count": project_locales.count(),
             "project": project,
-            "tags": (
-                len(TagsTool(projects=[project], priority=True))
+            "tags_count": (
+                project.tag_set.filter(resources__isnull=False).distinct().count()
                 if project.tags_enabled
                 else None
             ),
@@ -66,9 +82,15 @@ def ajax_teams(request, slug):
         Project.objects.visible_for(request.user).available(), slug=slug
     )
 
-    locales = (
-        Locale.objects.available().prefetch_project_locale(project).order_by("name")
-    )
+    locales = Locale.objects.available()
+
+    # Only include filtered teams if provided
+    teams = request.GET.get("teams", "").split(",")
+    filtered_locales = Locale.objects.filter(code__in=teams)
+    if filtered_locales.exists():
+        locales = locales.filter(pk__in=filtered_locales)
+
+    locales = locales.prefetch_project_locale(project).order_by("name")
 
     return render(
         request,
@@ -85,13 +107,32 @@ def ajax_tags(request, slug):
     if not project.tags_enabled:
         raise Http404
 
-    tags_tool = TagsTool(projects=[project], priority=True,)
+    tags_tool = TagsTool(
+        projects=[project],
+        priority=True,
+    )
+
+    tags = sorted(tags_tool, key=attrgetter("priority"), reverse=True)
 
     return render(
         request,
         "projects/includes/tags.html",
-        {"project": project, "tags": list(tags_tool)},
+        {"project": project, "tags": tags},
     )
+
+
+@require_AJAX
+def ajax_insights(request, slug):
+    """Insights tab."""
+    if not settings.ENABLE_INSIGHTS:
+        raise ImproperlyConfigured("ENABLE_INSIGHTS variable not set in settings.")
+
+    project = get_object_or_404(
+        Project.objects.visible_for(request.user).available(), slug=slug
+    )
+    insights = get_insights(project=project)
+
+    return render(request, "projects/includes/insights.html", insights)
 
 
 @require_AJAX
@@ -112,7 +153,9 @@ def ajax_notifications(request, slug):
     project = get_object_or_404(
         Project.objects.visible_for(request.user).available(), slug=slug
     )
-    available_locales = project.locales.order_by("name")
+    available_locales = project.locales.prefetch_project_locale(project).order_by(
+        "name"
+    )
 
     # Send notifications
     if request.method == "POST":
@@ -149,24 +192,18 @@ def ajax_notifications(request, slug):
 
     # Detect previously sent notifications using a unique identifier
     # TODO: We should simplify this with a custom Notifications model
-    notifications = []
+    notifications_map = {}
 
-    identifiers = set(
-        [
-            data["identifier"]
-            for data in list(
-                Notification.objects.filter(
-                    description__isnull=False,
-                    target_content_type=ContentType.objects.get_for_model(project),
-                    target_object_id=project.id,
-                ).values_list("data", flat=True)
-            )
-        ]
-    )
+    for notification in Notification.objects.filter(
+        description__isnull=False,
+        target_content_type=ContentType.objects.get_for_model(project),
+        target_object_id=project.id,
+    ):
+        identifier = notification.data["identifier"]
+        if identifier not in notifications_map:
+            notifications_map[identifier] = notification
 
-    for identifier in identifiers:
-        notifications.append(Notification.objects.filter(data__contains=identifier)[0])
-
+    notifications = list(notifications_map.values())
     notifications.sort(key=lambda x: x.timestamp, reverse=True)
 
     # Recipient shortcuts

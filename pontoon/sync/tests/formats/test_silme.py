@@ -1,10 +1,8 @@
-from __future__ import absolute_import
-
 import os.path
 import tempfile
 from textwrap import dedent
 
-from django_nose.tools import assert_equal, assert_raises, assert_true
+import pytest
 from silme.format.dtd import FormatParser as DTDParser
 
 from pontoon.base.tests import (
@@ -13,6 +11,7 @@ from pontoon.base.tests import (
     LocaleFactory,
     TestCase,
 )
+from pontoon.sync.exceptions import ParseError
 from pontoon.sync.formats import silme
 from pontoon.sync.tests.formats import FormatTestsMixin
 
@@ -21,10 +20,10 @@ class SilmeResourceTests(TestCase):
     def test_init_missing_resource(self):
         """
         If the translated resource doesn't exist and no source resource
-        is given, raise an IOError.
+        is given, raise a ParseError.
         """
         path = os.path.join(tempfile.mkdtemp(), "does", "not", "exist.dtd")
-        with assert_raises(IOError):
+        with pytest.raises(ParseError):
             silme.SilmeResource(DTDParser, path, source_resource=None)
 
     def create_nonexistant_resource(self, path):
@@ -47,9 +46,8 @@ class SilmeResourceTests(TestCase):
         path = os.path.join(tempfile.mkdtemp(), "does", "not", "exist.dtd")
         translated_resource = self.create_nonexistant_resource(path)
 
-        assert_equal(len(translated_resource.translations), 1)
-        translation = translated_resource.translations[0]
-        assert_equal(translation.strings, {})
+        assert len(translated_resource.translations) == 1
+        assert translated_resource.translations[0].strings == {}
 
     def test_save_create_dirs(self):
         """
@@ -62,7 +60,7 @@ class SilmeResourceTests(TestCase):
         translated_resource.translations[0].strings = {None: "New Translated String"}
         translated_resource.save(LocaleFactory.create())
 
-        assert_true(os.path.exists(path))
+        assert os.path.exists(path)
 
 
 BASE_DTD_FILE = """
@@ -87,7 +85,7 @@ class DTDTests(FormatTestsMixin, TestCase):
 
     def key(self, source_string):
         """DTD keys can't contain spaces."""
-        return super(DTDTests, self).key(source_string).replace(" ", "")
+        return super().key(source_string).replace(" ", "")
 
     def test_parse_basic(self):
         self.run_parse_basic(BASE_DTD_FILE, 0)
@@ -296,7 +294,7 @@ class PropertiesTests(FormatTestsMixin, TestCase):
 
     def key(self, source_string):
         """Properties keys can't contain spaces."""
-        return super(PropertiesTests, self).key(source_string).replace(" ", "")
+        return super().key(source_string).replace(" ", "")
 
     def test_parse_basic(self):
         self.run_parse_basic(BASE_PROPERTIES_FILE, 0)
@@ -459,7 +457,7 @@ class IniTests(FormatTestsMixin, TestCase):
 
     def key(self, source_string):
         """Ini keys can't contain spaces."""
-        return super(IniTests, self).key(source_string).replace(" ", "")
+        return super().key(source_string).replace(" ", "")
 
     def test_parse_basic(self):
         self.run_parse_basic(BASE_INI_FILE, 0)
@@ -634,7 +632,7 @@ class IncTests(FormatTestsMixin, TestCase):
 
     def key(self, source_string):
         """Inc keys can't contain spaces."""
-        return super(IncTests, self).key(source_string).replace(" ", "")
+        return super().key(source_string).replace(" ", "")
 
     def test_parse_basic(self):
         self.run_parse_basic(BASE_INC_FILE, 0)
@@ -786,7 +784,7 @@ class IncTests(FormatTestsMixin, TestCase):
         )
 
         path, resource = self.parse_string(input_string)
-        assert_equal(len(resource.translations), 2)
+        assert len(resource.translations) == 2
         assert_attributes_equal(
             resource.translations[1],
             key="MOZ_LANGPACK_CONTRIBUTORS",
@@ -814,7 +812,7 @@ class IncTests(FormatTestsMixin, TestCase):
         )
 
         path, resource = self.parse_string(input_string, source_string=source_string)
-        assert_equal(len(resource.translations), 2)
+        assert len(resource.translations) == 2
         assert_attributes_equal(
             resource.translations[1],
             key="MOZ_LANGPACK_CONTRIBUTORS",

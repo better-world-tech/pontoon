@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 # The classes here provide similar functionality to
 # TranslatedResource.stats in mangling stats data,
 # although they use queryset `values` rather than objects
@@ -22,7 +20,7 @@ class TagsStatsTool(TagsTRTool):
     # from the perspective of translated resources
     _default_annotations = (
         ("total_strings", Coalesce(Sum("resource__total_strings"), Value(0))),
-        ("fuzzy_strings", Coalesce(Sum("fuzzy_strings"), Value(0))),
+        ("pretranslated_strings", Coalesce(Sum("pretranslated_strings"), Value(0))),
         ("strings_with_warnings", Coalesce(Sum("strings_with_warnings"), Value(0))),
         ("strings_with_errors", Coalesce(Sum("strings_with_errors"), Value(0))),
         ("approved_strings", Coalesce(Sum("approved_strings"), Value(0))),
@@ -51,7 +49,7 @@ class TagsStatsTool(TagsTRTool):
                 tag.update(stats[tag["pk"]])
             return tags
         elif self.get_groupby()[0] == "locale":
-            result = list(super(TagsStatsTool, self).get_data())
+            result = list(super().get_data())
             # get the found locales as values
             locales = {
                 loc["pk"]: loc

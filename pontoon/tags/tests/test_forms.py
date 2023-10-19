@@ -1,7 +1,6 @@
-from __future__ import absolute_import
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
-from mock import MagicMock, PropertyMock, patch
 
 from django import forms
 
@@ -33,24 +32,26 @@ def test_form_project_tag_resources_submit_bad(project_a):
     form = LinkTagResourcesAdminForm(project=project_a, data={})
     assert not form.is_valid()
     assert form.errors == {
-        "tag": [u"This field is required."],
-        "type": [u"This field is required."],
-    }
-
-    form = LinkTagResourcesAdminForm(project=project_a, data=dict(type="foo"),)
-    assert not form.is_valid()
-    assert form.errors == {
-        "tag": [u"This field is required."],
-        "type": [
-            u"Select a valid choice. " u"foo is not one of the available choices.",
-        ],
+        "tag": ["This field is required."],
+        "type": ["This field is required."],
     }
 
     form = LinkTagResourcesAdminForm(
-        project=project_a, data=dict(type="assoc", tag="DOESNOTEXIST"),
+        project=project_a,
+        data=dict(type="foo"),
     )
     assert not form.is_valid()
-    assert form.errors == {"tag": [u"Unrecognized tag: DOESNOTEXIST"]}
+    assert form.errors == {
+        "tag": ["This field is required."],
+        "type": ["Select a valid choice. " "foo is not one of the available choices."],
+    }
+
+    form = LinkTagResourcesAdminForm(
+        project=project_a,
+        data=dict(type="assoc", tag="DOESNOTEXIST"),
+    )
+    assert not form.is_valid()
+    assert form.errors == {"tag": ["Unrecognized tag: DOESNOTEXIST"]}
 
 
 @pytest.mark.django_db
@@ -62,28 +63,30 @@ def test_form_project_tag_resources_submit(paths_mock, project_a, tag_a):
 
     # test assoc form submit
     form = LinkTagResourcesAdminForm(
-        project=project_a, data=dict(type="assoc", tag=tag_a.slug),
+        project=project_a,
+        data=dict(type="assoc", tag=tag_a.slug),
     )
     assert form.is_valid()
     assert form.cleaned_data == {
         "action": None,
         "data": 23,
-        "search": u"",
-        "tag": u"tag",
-        "type": u"assoc",
+        "search": "",
+        "tag": "tag",
+        "type": "assoc",
     }
 
     # test nonassoc form submit
     form = LinkTagResourcesAdminForm(
-        project=project_a, data=dict(type="nonassoc", tag=tag_a.slug),
+        project=project_a,
+        data=dict(type="nonassoc", tag=tag_a.slug),
     )
     assert form.is_valid()
     assert form.cleaned_data == {
         "action": None,
         "data": 23,
-        "search": u"",
-        "tag": u"tag",
-        "type": u"nonassoc",
+        "search": "",
+        "tag": "tag",
+        "type": "nonassoc",
     }
 
 
@@ -107,9 +110,9 @@ def test_form_project_tag_resources_submit_paths(paths_mock, project_a, tag_a):
     assert form.cleaned_data == {
         "action": form.tag_tool.unlink_resources,
         "data": 113,
-        "search": u"",
-        "tag": u"tag",
-        "type": u"assoc",
+        "search": "",
+        "tag": "tag",
+        "type": "assoc",
     }
 
     # test nonassoc form submit
@@ -125,9 +128,9 @@ def test_form_project_tag_resources_submit_paths(paths_mock, project_a, tag_a):
     assert form.cleaned_data == {
         "action": form.tag_tool.link_resources,
         "data": 113,
-        "search": u"",
-        "tag": u"tag",
-        "type": u"nonassoc",
+        "search": "",
+        "tag": "tag",
+        "type": "nonassoc",
     }
 
 
@@ -147,7 +150,7 @@ def test_form_project_tag_resources_submit_paths_bad(paths_mock, project_a, tag_
         ),
     )
     assert not form.is_valid()
-    assert form.errors == {"data": [u"Ooops!"]}
+    assert form.errors == {"data": ["Ooops!"]}
 
 
 @pytest.mark.django_db

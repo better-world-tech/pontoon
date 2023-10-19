@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import datetime
 
 from django.contrib.auth.models import User
@@ -10,15 +8,15 @@ from pontoon.base.models import Project
 
 
 class Command(BaseCommand):
-    help = "Notify contributors about the approaching project deadline"
+    help = "Notify contributors about the approaching project target date"
 
     def handle(self, *args, **options):
         """
-        This command sends deadline reminders to contributors of projects that
-        are due in 7 days. If 2 days before the deadline project still isn't
+        This command sends target date reminders to contributors of projects that
+        are due in 7 days. If 2 days before the target date project still isn't
         complete for the contributor's locale, notifications are sent again.
 
-        Command is designed to run on a daily basis.
+        The command is designed to run daily.
         """
         for project in Project.objects.available():
             if project.deadline:
@@ -29,10 +27,11 @@ class Command(BaseCommand):
                 continue
 
             self.stdout.write(
-                "Sending deadline notifications for project {}.".format(project)
+                f"Sending target date notifications for project {project}."
             )
 
-            verb = "due in {} days".format(days_left)
+            is_project_public = project.visibility == Project.Visibility.PUBLIC
+            verb = f"due in {days_left} days"
             locales = []
 
             for project_locale in project.project_locale.all():
@@ -40,17 +39,15 @@ class Command(BaseCommand):
                     locales.append(project_locale.locale)
 
             contributors = (
-                User.projects.filter_by_visibility(project)
-                .filter(
+                User.objects.filter(
                     translation__entity__resource__project=project,
                     translation__locale__in=locales,
-                )
-                .distinct(),
+                    profile__project_deadline_notifications=True,
+                ).distinct(),
             )
 
             for contributor in contributors:
-                notify.send(project, recipient=contributor, verb=verb)
+                if is_project_public or contributor.is_superuser:
+                    notify.send(project, recipient=contributor, verb=verb)
 
-            self.stdout.write(
-                "Deadline notifications for project {} sent.".format(project)
-            )
+            self.stdout.write(f"Target date notifications for project {project} sent.")

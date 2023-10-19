@@ -1,4 +1,3 @@
-from __future__ import absolute_import
 import pytest
 
 from pontoon.checks.libraries.translate_toolkit import run_checks
@@ -14,9 +13,11 @@ def test_tt_invalid_translation(mock_locale):
     """
     Check if translate toolkit returns errors if chek
     """
-    assert run_checks("Original string", "Translation \\q", mock_locale,) == {
-        "ttWarnings": ["Escapes"]
-    }
+    assert run_checks(
+        "Original string",
+        "Translation \\q",
+        mock_locale,
+    ) == {"ttWarnings": ["Escapes"]}
 
 
 def test_tt_disabled_checks(mock_locale):

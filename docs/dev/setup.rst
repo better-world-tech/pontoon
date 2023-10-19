@@ -2,7 +2,7 @@ Developer Setup
 ===============
 
 The following describes how to set up an instance of the site on your
-computer for development with Docker and docker-compose.
+computer for development with Docker.
 
    .. Warning::
 
@@ -14,8 +14,7 @@ Prerequisites
 
 1. Install `Docker <https://docs.docker.com/install/>`_.
 
-2. Install `docker-compose <https://docs.docker.com/compose/install/>`_. You need
-   1.10 or higher.
+2. Install `Node.js 14 and npm 7 or later <https://docs.npmjs.com/downloading-and-installing-node-js-and-npm>`_.
 
 3. Install `make <https://www.gnu.org/software/make/>`_ using either your
    system's package manager (Linux) or Xcode command line developer tools (OSX).
@@ -24,22 +23,28 @@ Prerequisites
 Quickstart
 ----------
 
-1. Clone your `fork <https://help.github.com/en/github/getting-started-with-github/fork-a-repo>`_ of Pontoon repository::
+1. Clone the `Pontoon repository <https://github.com/mozilla/pontoon>`_::
 
-     $ git clone https://github.com/YOUR-USERNAME/pontoon.git
+     $ git clone https://github.com/mozilla/pontoon.git
+
+   .. Note::
+
+        To contribute changes to the project, you will need to
+        `fork <https://help.github.com/en/github/getting-started-with-github/fork-a-repo>`_
+        the repository under your own GitHub account.
 
 
 2. From the root of the repository, run::
 
      $ make build
 
-   That will build the containers required for development: base and
-   webapp.
+   That will install Pontoon's JS dependencies,
+   build the frontend packages, and build the server container.
 
    .. Note::
 
         If you want to share your development instance in your local network,
-        set SITE_URL to bind the webapp to any address you like, e.g.
+        set SITE_URL to bind the server to any address you like, e.g.
         ``make build SITE_URL="http://192.168.1.14:8000"``.
 
 
@@ -50,18 +55,18 @@ Quickstart
    .. Note::
 
         The first time you run this, the PostgreSQL container needs to do
-        some work before it becomes available to the webapp container. Hence,
-        the webapp might not be able to perform things like migrations.
+        some work before it becomes available to the server container. Hence,
+        the server might not be able to perform things like migrations.
         You can simply wait for the postgresql container to report that it's
         ready, then abort the process, then restart it. That should let the
-        webapp do all its setup as expected.
+        server do all its setup as expected.
 
         Alternatively, you can run ``docker-compose up postgresql`` and wait
         until it reports that the database is ready, then stop that and run
         ``make run``.
 
 
-4. Finally, you need to run some setup steps, while the webapp is running::
+4. Finally, you need to run some setup steps, while the server is running::
 
       $ make setup
 
@@ -69,16 +74,6 @@ Quickstart
    account settings.
 
 The app should now be available at http://localhost:8000 or the custom SITE_URL.
-
-   .. Warning::
-
-        After you execute ``make run``, the console output might trick you into
-        accessing Pontoon in the browser at http://localhost:3000/. Note that
-        the URL only refers to the frontend app, which is not meant to be used
-        standalone.
-
-        To access Pontoon app, you should use http://localhost:8000 or the
-        custom SITE_URL.
 
 And with that, you're ready to start :doc:`contributing`!
 

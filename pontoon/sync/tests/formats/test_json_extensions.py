@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from textwrap import dedent
 
 from pontoon.base.tests import assert_attributes_equal, TestCase
@@ -46,14 +44,16 @@ class JsonExtensionsTests(FormatTestsMixin, TestCase):
 
     def key(self, source_string):
         """JSON keys can't contain spaces."""
-        return super(JsonExtensionsTests, self).key(source_string).replace(" ", "")
+        return super().key(source_string).replace(" ", "")
 
     def test_parse_basic(self):
         self.run_parse_basic(BASE_JSON_FILE, 0)
 
     def test_parse_multiple_comments(self):
         self.run_parse_multiple_comments(
-            BASE_JSON_FILE, 1, comments=["Second comment"],
+            BASE_JSON_FILE,
+            1,
+            comments=["Second comment"],
         )
 
     def test_parse_no_comments_no_sources(self):
@@ -96,7 +96,9 @@ class JsonExtensionsTests(FormatTestsMixin, TestCase):
         )
 
         self.run_save_basic(
-            input_string, expected_string, source_string=input_string,
+            input_string,
+            expected_string,
+            source_string=input_string,
         )
 
     def test_save_remove(self):
@@ -117,5 +119,7 @@ class JsonExtensionsTests(FormatTestsMixin, TestCase):
         )
 
         self.run_save_remove(
-            input_string, expected_string, source_string=input_string,
+            input_string,
+            expected_string,
+            source_string=input_string,
         )

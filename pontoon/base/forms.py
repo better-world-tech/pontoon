@@ -1,11 +1,9 @@
-from __future__ import absolute_import
-
-import os
-
 import bleach
 
 from django import forms
 from django.conf import settings
+
+from pathlib import Path
 
 from pontoon.base import utils
 from pontoon.base.models import (
@@ -14,15 +12,15 @@ from pontoon.base.models import (
     User,
     UserProfile,
 )
+from pontoon.sync.formats import are_compatible_files
 from pontoon.teams.utils import log_group_members
-from pontoon.sync.formats import SUPPORTED_FORMAT_PARSERS
 
 
 class HtmlField(forms.CharField):
     widget = forms.Textarea
 
     def clean(self, value):
-        value = super(HtmlField, self).clean(value)
+        value = super().clean(value)
         value = bleach.clean(
             value,
             strip=True,
@@ -50,7 +48,7 @@ class UploadFileForm(DownloadFileForm):
     uploadfile = NoTabStopFileField()
 
     def clean(self):
-        cleaned_data = super(UploadFileForm, self).clean()
+        cleaned_data = super().clean()
         part = cleaned_data.get("part")
         uploadfile = cleaned_data.get("uploadfile")
 
@@ -67,21 +65,18 @@ class UploadFileForm(DownloadFileForm):
 
             # File format validation
             if part:
-                file_extension = os.path.splitext(uploadfile.name)[1].lower()
-                part_extension = os.path.splitext(part)[1].lower()
+                uploadfile_name = Path(uploadfile.name).name.lower()
+                targetfile_name = Path(part).name.lower()
 
-                # For now, skip if uploading file while using subpages
-                if (
-                    part_extension in SUPPORTED_FORMAT_PARSERS.keys()
-                    and part_extension != file_extension
-                ):
+                # Fail if upload and target file are incompatible
+                if not are_compatible_files(uploadfile_name, targetfile_name):
                     message = "Upload failed. File format not supported. Use {supported}.".format(
-                        supported=part_extension
+                        supported=targetfile_name
                     )
                     raise forms.ValidationError(message)
 
 
-class UserPermissionLogFormMixin(object):
+class UserPermissionLogFormMixin:
     """
     Logging of changes requires knowledge about the current user.
     We fetch information about a user from `request` object and
@@ -90,13 +85,13 @@ class UserPermissionLogFormMixin(object):
 
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop("user")
-        super(UserPermissionLogFormMixin, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def assign_users_to_groups(self, group_name, users):
         """
         Clear group membership and assign a set of users to a given group of users.
         """
-        group = getattr(self.instance, "{}_group".format(group_name))
+        group = getattr(self.instance, f"{group_name}_group")
 
         add_users, remove_users = utils.get_m2m_changes(group.user_set.all(), users)
 
@@ -141,7 +136,7 @@ class ProjectLocalePermsForm(UserPermissionLogFormMixin, forms.ModelForm):
         fields = ("translators", "has_custom_translators")
 
     def save(self, *args, **kwargs):
-        super(ProjectLocalePermsForm, self).save(*args, **kwargs)
+        super().save(*args, **kwargs)
 
         translators = self.cleaned_data.get("translators", User.objects.none())
 
@@ -189,38 +184,59 @@ class ProjectLocaleFormSet(forms.models.BaseModelFormSet):
 
 
 ProjectLocalePermsFormsSet = forms.modelformset_factory(
-    ProjectLocale, ProjectLocalePermsForm, formset=ProjectLocaleFormSet,
+    ProjectLocale,
+    ProjectLocalePermsForm,
+    formset=ProjectLocaleFormSet,
 )
 
 
-class UserProfileForm(forms.ModelForm):
+class UserForm(forms.ModelForm):
     """
-    Form is responsible for saving user's name.
+    Form is responsible for saving user data.
     """
 
     first_name = forms.RegexField(
-        label="Name", regex="^[^<>\"'&]+$", max_length=30, strip=True,
-    )
-    email = forms.EmailField(
-        help_text=(
-            "Changing your email address will cause a logout. "
-            "Make sure the new one is correct before saving!"
-        )
+        label="Display name",
+        regex="^[^<>\"'&]+$",
+        max_length=30,
+        strip=True,
     )
 
     class Meta:
         model = User
-        fields = ("first_name", "email")
+        fields = ("first_name",)
 
-    def clean_email(self):
-        email = self.cleaned_data.get("email")
-        if email and (
-            User.objects.filter(email=email)
-            .exclude(username=self.instance.username)
-            .exists()
-        ):
-            raise forms.ValidationError(u"Email address must be unique.")
-        return email
+
+class UserProfileForm(forms.ModelForm):
+    """
+    Form is responsible for saving user profile data.
+    """
+
+    class Meta:
+        model = UserProfile
+        fields = (
+            "username",
+            "contact_email",
+            "bio",
+            "chat",
+            "github",
+            "bugzilla",
+        )
+
+
+class UserProfileVisibilityForm(forms.ModelForm):
+    """
+    Form is responsible for controlling user profile visibility.
+    """
+
+    class Meta:
+        model = UserProfile
+        fields = (
+            "visibility_email",
+            "visibility_external_accounts",
+            "visibility_self_approval",
+            "visibility_approval",
+        )
 
 
 class UserCustomHomepageForm(forms.ModelForm):
@@ -233,7 +249,7 @@ class UserCustomHomepageForm(forms.ModelForm):
         fields = ("custom_homepage",)
 
     def __init__(self, *args, **kwargs):
-        super(UserCustomHomepageForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         all_locales = list(Locale.objects.all().values_list("code", "name"))
 
         self.fields["custom_homepage"] = forms.ChoiceField(
@@ -251,7 +267,7 @@ class UserPreferredSourceLocaleForm(forms.ModelForm):
         fields = ("preferred_source_locale",)
 
     def __init__(self, *args, **kwargs):
-        super(UserPreferredSourceLocaleForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         all_locales = list(Locale.objects.all().values_list("code", "name"))
 
         self.fields["preferred_source_locale"] = forms.ChoiceField(
@@ -283,6 +299,9 @@ class GetEntitiesForm(forms.Form):
     tag = forms.CharField(required=False)
     time = forms.CharField(required=False)
     author = forms.CharField(required=False)
+    review_time = forms.CharField(required=False)
+    reviewer = forms.CharField(required=False)
+    exclude_self_reviewed = forms.BooleanField(required=False)
     search = forms.CharField(required=False)
     exclude_entities = forms.CharField(required=False)
     entity_ids = forms.CharField(required=False)
@@ -315,9 +334,9 @@ class GetEntitiesForm(forms.Form):
         return utils.split_ints(self.cleaned_data["entity_ids"])
 
 
-class AddCommentsForm(forms.Form):
+class AddCommentForm(forms.Form):
     """
-    Form for parameters to the `add_comments` view.
+    Form for parameters to the `add_comment` view.
     """
 
     locale = forms.CharField(required=False)

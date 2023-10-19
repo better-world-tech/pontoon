@@ -1,5 +1,5 @@
 /* A 3-column selector to select two lists */
-$(function() {
+$(function () {
   function getTarget(item) {
     var list = $(item).parents('.select');
     var target = list.siblings('.select:nth-child(2)');
@@ -7,8 +7,7 @@ $(function() {
     if (list.is('.select:nth-child(2)')) {
       if ($(item).is('.left') || list.siblings().length === 1) {
         target = list.siblings('.select:first-child');
-      }
-      else {
+      } else {
         target = list.siblings('.select:last-child');
       }
     }
@@ -28,8 +27,20 @@ $(function() {
 
   // Set translators arrow direction
   $('body')
-    .on('mouseenter', '.double-list-selector .select:nth-child(2) li', function (e) { setArrow($(this), e); })
-    .on('mousemove', '.double-list-selector .select:nth-child(2) li', function (e) { setArrow($(this), e); });
+    .on(
+      'mouseenter',
+      '.double-list-selector .select:nth-child(2) li',
+      function (e) {
+        setArrow($(this), e);
+      },
+    )
+    .on(
+      'mousemove',
+      '.double-list-selector .select:nth-child(2) li',
+      function (e) {
+        setArrow($(this), e);
+      },
+    );
 
   // Move items between lists
   var mainSelector = '.double-list-selector';
@@ -48,7 +59,10 @@ $(function() {
     }
     // Move all items in the list
     else {
-      clone = $(this).parents('.select').find('li:visible:not(".no-match")').remove();
+      clone = $(this)
+        .parents('.select')
+        .find('li:visible:not(".no-match")')
+        .remove();
     }
 
     ul.append(clone.removeClass('hover'));

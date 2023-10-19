@@ -1,0 +1,81 @@
+.comments-list ul .comment {
+  padding-bottom: 10px;
+}
+
+.comments-list .comment a {
+  color: var(--light-green-1);
+  font-weight: 400;
+}
+
+.comments-list
+  .comment
+  .container
+  .content
+  a[href^='/contributors/']:not(.comment-author) {
+  background-color: var(--dark-grey-2);
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+.comments-list .comment-author {
+  margin-right: 4px;
+}
+
+.comments-list .comment .content {
+  background-color: var(--grey-3);
+  border: solid 1px var(--grey-3);
+  border-radius: 4px;
+  display: flex;
+  font-size: 11px;
+  padding: 6px;
+  word-break: break-word;
+  white-space: pre-wrap;
+  position: relative;
+}
+
+.comments-list .comment .content p,
+.comments-list .comment .content span {
+  color: var(--light-grey-6);
+}
+
+.comments-list .comment .content p:first-child {
+  display: inline;
+}
+
+.comments-list .comment .info {
+  color: var(--light-grey-7);
+  font-size: 11px;
+  font-weight: 300;
+  margin-top: -2px;
+  padding-left: 8px;
+}
+
+.comments-list .comment .info .pin-button:before {
+  content: '•';
+  padding: 0 3px 0 3px;
+}
+
+.comments-list .comment .info .pin-button {
+  background-color: transparent;
+  border: none;
+  color: var(--light-grey-7);
+  font-size: 11px;
+  font-weight: 300;
+  padding: 0;
+}
+
+.comments-list .comment .info .pin-button:hover {
+  color: var(--light-green-1);
+}
+
+.comments-list .comment .comment-pin {
+  color: var(--light-green-1);
+  font-size: 9px;
+  position: absolute;
+  right: 4px;
+  top: -10px;
+}
+
+.comments-list .comment .comment-pin .fa {
+  padding-right: 2px;
+}

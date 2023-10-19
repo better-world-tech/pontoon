@@ -1,9 +1,7 @@
-from __future__ import absolute_import
-
 import os.path
+from unittest.mock import patch, PropertyMock
 
 import factory
-from mock import patch, PropertyMock
 
 from pontoon.base.models import Project
 from pontoon.base.tests import (
@@ -21,15 +19,24 @@ from pontoon.sync.models import ProjectSyncLog, RepositorySyncLog, SyncLog
 from pontoon.sync.vcs.models import VCSEntity, VCSProject, VCSResource, VCSTranslation
 
 
-FAKE_CHECKOUT_PATH = os.path.join(os.path.dirname(__file__), "fake-checkout",)
+FAKE_CHECKOUT_PATH = os.path.join(
+    os.path.dirname(__file__),
+    "fake-checkout",
+)
 PROJECT_CONFIG_CHECKOUT_PATH = os.path.join(
-    os.path.dirname(__file__), "project-config-checkout",
+    os.path.dirname(__file__),
+    "project-config-checkout",
+)
+LOCALE_SEPARATOR_TEST_PATH = os.path.join(
+    os.path.dirname(__file__),
+    "locale-separator-tests",
 )
 
 
 class VCSEntityFactory(factory.Factory):
     resource = None
     key = "key"
+    context = "context"
     string = "string"
     string_plural = ""
     comments = factory.List([])
@@ -41,7 +48,8 @@ class VCSEntityFactory(factory.Factory):
 
 
 class VCSTranslationFactory(factory.Factory):
-    key = factory.Sequence(lambda n: "key-{0}".format(n))
+    key = factory.Sequence(lambda n: f"key-{n}")
+    context = "context"
     strings = factory.Dict({})
     comments = factory.List([])
     fuzzy = False
@@ -50,12 +58,12 @@ class VCSTranslationFactory(factory.Factory):
         model = VCSTranslation
 
 
-class SyncLogFactory(factory.DjangoModelFactory):
+class SyncLogFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = SyncLog
 
 
-class ProjectSyncLogFactory(factory.DjangoModelFactory):
+class ProjectSyncLogFactory(factory.django.DjangoModelFactory):
     sync_log = factory.SubFactory(SyncLogFactory)
     project = factory.SubFactory(ProjectFactory)
 
@@ -63,7 +71,7 @@ class ProjectSyncLogFactory(factory.DjangoModelFactory):
         model = ProjectSyncLog
 
 
-class RepositorySyncLogFactory(factory.DjangoModelFactory):
+class RepositorySyncLogFactory(factory.django.DjangoModelFactory):
     project_sync_log = factory.SubFactory(ProjectSyncLogFactory)
     repository = factory.SubFactory(RepositoryFactory)
 

@@ -1,8 +1,4 @@
-from __future__ import absolute_import
-
 import logging
-
-from bulk_update.helper import bulk_update
 
 from django.urls import reverse
 from django.db import models
@@ -59,7 +55,7 @@ class SyncLog(BaseLog):
     def fix_stats(self):
         """
         Recalculate any broken stats when sync task is finished. This is a
-        temporary fix for bug 1310668.
+        temporary fix for https://github.com/mozilla/pontoon/issues/2040.
         """
         if not self.finished:
             return
@@ -78,7 +74,9 @@ class SyncLog(BaseLog):
                 )
             )
 
-        bulk_update(translated_resources, update_fields=["total_strings"])
+        TranslatedResource.objects.bulk_update(
+            translated_resources, fields=["total_strings"]
+        )
 
         # total_strings missmatch in ProjectLocales within the same project
         for p in Project.objects.available():
@@ -92,7 +90,7 @@ class SyncLog(BaseLog):
                 for pl in ProjectLocale.objects.filter(project=p):
                     pl.aggregate_stats()
 
-        # approved + fuzzy + errors + warnings > total in TranslatedResource
+        # approved + pretranslated + errors + warnings > total in TranslatedResource
         for t in (
             TranslatedResource.objects.filter(
                 resource__project__disabled=False,
@@ -101,7 +99,7 @@ class SyncLog(BaseLog):
             .annotate(
                 total=Sum(
                     F("approved_strings")
-                    + F("fuzzy_strings")
+                    + F("pretranslated_strings")
                     + F("strings_with_errors")
                     + F("strings_with_warnings")
                 )

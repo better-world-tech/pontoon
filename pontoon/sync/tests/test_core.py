@@ -1,15 +1,7 @@
-from __future__ import absolute_import
-
 import os.path
+from unittest.mock import ANY, Mock, patch, PropertyMock, MagicMock
 
-from django_nose.tools import (
-    assert_equal,
-    assert_false,
-    assert_not_equal,
-    assert_raises,
-    assert_true,
-)
-from mock import ANY, Mock, patch, PropertyMock, MagicMock
+import pytest
 
 from pontoon.base.models import (
     Entity,
@@ -47,7 +39,7 @@ class UpdateEntityTests(FakeCheckoutTestCase):
         If both the db_entity and vcs_entity are None, raise a
         CommandError, as that should never happen.
         """
-        with assert_raises(ValueError):
+        with pytest.raises(ValueError):
             self.call_update_entities([("key", None, None)])
 
     def test_obsolete(self):
@@ -86,8 +78,8 @@ class UpdateTranslationsTests(FakeCheckoutTestCase):
                 ("both", None, None),
             ]
         )
-        assert_false(self.changeset.update_vcs_entity.called)
-        assert_false(self.changeset.update_db_entity.called)
+        assert not self.changeset.update_vcs_entity.called
+        assert not self.changeset.update_db_entity.called
 
     def test_no_translation(self):
         """If no translation exists for a specific locale, skip it."""
@@ -98,8 +90,8 @@ class UpdateTranslationsTests(FakeCheckoutTestCase):
         self.call_update_translations(
             [("key", self.main_db_entity, self.main_vcs_entity)]
         )
-        assert_false(self.changeset.update_vcs_entity.called)
-        assert_false(self.changeset.update_db_entity.called)
+        assert not self.changeset.update_vcs_entity.called
+        assert not self.changeset.update_db_entity.called
 
     def test_db_changed(self):
         """
@@ -142,14 +134,12 @@ class UpdateResourcesTests(FakeCheckoutTestCase):
 
         update_resources(self.db_project, self.vcs_project)
         self.main_db_resource.refresh_from_db()
-        assert_equal(
-            self.main_db_resource.total_strings, len(self.main_vcs_resource.entities)
+        assert self.main_db_resource.total_strings == len(
+            self.main_vcs_resource.entities
         )
 
         other_db_resource = Resource.objects.get(path=self.other_vcs_resource.path)
-        assert_equal(
-            other_db_resource.total_strings, len(self.other_vcs_resource.entities)
-        )
+        assert other_db_resource.total_strings == len(self.other_vcs_resource.entities)
 
 
 class UpdateTranslatedResourcesTests(FakeCheckoutTestCase):
@@ -167,10 +157,12 @@ class UpdateTranslatedResourcesTests(FakeCheckoutTestCase):
         # Without project config
         self.vcs_project.configuration = None
         update_translated_resources(
-            self.db_project, self.vcs_project, self.translated_locale,
+            self.db_project,
+            self.vcs_project,
+            self.translated_locale,
         )
-        assert_false(update_translated_resources_with_config_mock.called)
-        assert_true(update_translated_resources_without_config_mock.called)
+        assert not update_translated_resources_with_config_mock.called
+        assert update_translated_resources_without_config_mock.called
 
         # Reset called value
         update_translated_resources_with_config_mock.called = False
@@ -179,10 +171,12 @@ class UpdateTranslatedResourcesTests(FakeCheckoutTestCase):
         # With project config
         self.vcs_project.configuration = True
         update_translated_resources(
-            self.db_project, self.vcs_project, self.translated_locale,
+            self.db_project,
+            self.vcs_project,
+            self.translated_locale,
         )
-        assert_true(update_translated_resources_with_config_mock.called)
-        assert_false(update_translated_resources_without_config_mock.called)
+        assert update_translated_resources_with_config_mock.called
+        assert not update_translated_resources_without_config_mock.called
 
     def test_project_configuration_basic(self):
         """
@@ -195,21 +189,20 @@ class UpdateTranslatedResourcesTests(FakeCheckoutTestCase):
                 ]
 
                 update_translated_resources_with_config(
-                    self.db_project, self.vcs_project, self.translated_locale,
+                    self.db_project,
+                    self.vcs_project,
+                    self.translated_locale,
                 )
 
-                assert_true(
-                    TranslatedResource.objects.filter(
-                        resource=self.other_db_resource, locale=self.translated_locale,
-                    ).exists()
-                )
+                assert TranslatedResource.objects.filter(
+                    resource=self.other_db_resource,
+                    locale=self.translated_locale,
+                ).exists()
 
-                assert_false(
-                    TranslatedResource.objects.filter(
-                        resource=self.missing_db_resource,
-                        locale=self.translated_locale,
-                    ).exists()
-                )
+                assert not TranslatedResource.objects.filter(
+                    resource=self.missing_db_resource,
+                    locale=self.translated_locale,
+                ).exists()
 
     def test_no_project_configuration_basic(self):
         """
@@ -217,26 +210,22 @@ class UpdateTranslatedResourcesTests(FakeCheckoutTestCase):
         available in the current locale.
         """
         update_translated_resources_without_config(
-            self.db_project, self.vcs_project, self.translated_locale,
+            self.db_project,
+            self.vcs_project,
+            self.translated_locale,
         )
 
-        assert_true(
-            TranslatedResource.objects.filter(
-                resource=self.main_db_resource, locale=self.translated_locale
-            ).exists()
-        )
+        assert TranslatedResource.objects.filter(
+            resource=self.main_db_resource, locale=self.translated_locale
+        ).exists()
 
-        assert_true(
-            TranslatedResource.objects.filter(
-                resource=self.other_db_resource, locale=self.translated_locale
-            ).exists()
-        )
+        assert TranslatedResource.objects.filter(
+            resource=self.other_db_resource, locale=self.translated_locale
+        ).exists()
 
-        assert_false(
-            TranslatedResource.objects.filter(
-                resource=self.missing_db_resource, locale=self.translated_locale
-            ).exists()
-        )
+        assert not TranslatedResource.objects.filter(
+            resource=self.missing_db_resource, locale=self.translated_locale
+        ).exists()
 
     def test_no_project_configuration_asymmetric(self):
         """
@@ -249,26 +238,22 @@ class UpdateTranslatedResourcesTests(FakeCheckoutTestCase):
             is_asymmetric.return_value = True
 
             update_translated_resources_without_config(
-                self.db_project, self.vcs_project, self.translated_locale,
+                self.db_project,
+                self.vcs_project,
+                self.translated_locale,
             )
 
-            assert_true(
-                TranslatedResource.objects.filter(
-                    resource=self.main_db_resource, locale=self.translated_locale
-                ).exists()
-            )
+            assert TranslatedResource.objects.filter(
+                resource=self.main_db_resource, locale=self.translated_locale
+            ).exists()
 
-            assert_true(
-                TranslatedResource.objects.filter(
-                    resource=self.other_db_resource, locale=self.translated_locale
-                ).exists()
-            )
+            assert TranslatedResource.objects.filter(
+                resource=self.other_db_resource, locale=self.translated_locale
+            ).exists()
 
-            assert_true(
-                TranslatedResource.objects.filter(
-                    resource=self.missing_db_resource, locale=self.translated_locale
-                ).exists()
-            )
+            assert TranslatedResource.objects.filter(
+                resource=self.missing_db_resource, locale=self.translated_locale
+            ).exists()
 
     def test_no_project_configuration_extra_locales(self):
         """
@@ -276,32 +261,26 @@ class UpdateTranslatedResourcesTests(FakeCheckoutTestCase):
         even if the inactive locale has a resource.
         """
         update_translated_resources_without_config(
-            self.db_project, self.vcs_project, self.translated_locale,
+            self.db_project,
+            self.vcs_project,
+            self.translated_locale,
         )
 
-        assert_true(
-            TranslatedResource.objects.filter(
-                resource=self.main_db_resource, locale=self.translated_locale
-            ).exists()
-        )
+        assert TranslatedResource.objects.filter(
+            resource=self.main_db_resource, locale=self.translated_locale
+        ).exists()
 
-        assert_true(
-            TranslatedResource.objects.filter(
-                resource=self.other_db_resource, locale=self.translated_locale
-            ).exists()
-        )
+        assert TranslatedResource.objects.filter(
+            resource=self.other_db_resource, locale=self.translated_locale
+        ).exists()
 
-        assert_false(
-            TranslatedResource.objects.filter(
-                resource=self.main_db_resource, locale=self.inactive_locale
-            ).exists()
-        )
+        assert not TranslatedResource.objects.filter(
+            resource=self.main_db_resource, locale=self.inactive_locale
+        ).exists()
 
-        assert_false(
-            TranslatedResource.objects.filter(
-                resource=self.other_db_resource, locale=self.inactive_locale
-            ).exists()
-        )
+        assert not TranslatedResource.objects.filter(
+            resource=self.other_db_resource, locale=self.inactive_locale
+        ).exists()
 
 
 class EntityKeyTests(FakeCheckoutTestCase):
@@ -310,15 +289,14 @@ class EntityKeyTests(FakeCheckoutTestCase):
         Entities with the same string from different resources must not get the
         same key from entity_key.
         """
-        assert_not_equal(
-            entity_key(self.main_vcs_resource.entities["Common String"]),
-            entity_key(self.other_vcs_resource.entities["Common String"]),
-        )
+        assert entity_key(
+            self.main_vcs_resource.entities["Common String"]
+        ) != entity_key(self.other_vcs_resource.entities["Common String"])
 
 
 class CommitChangesTests(FakeCheckoutTestCase):
     def setUp(self):
-        super(CommitChangesTests, self).setUp()
+        super().setUp()
         self.mock_repo_commit = self.patch_object(Repository, "commit")
 
     def test_multiple_authors(self):
@@ -364,7 +342,7 @@ class CommitChangesTests(FakeCheckoutTestCase):
             os.path.join(FAKE_CHECKOUT_PATH, self.translated_locale.code),
         )
         commit_message = self.repository.commit.mock_calls[0][1][0]
-        assert_equal(commit_message.count(author.display_name_and_email), 1)
+        assert commit_message.count(author.display_name_and_email) == 1
 
     def test_no_authors(self):
         """
@@ -383,13 +361,13 @@ class CommitChangesTests(FakeCheckoutTestCase):
             os.path.join(FAKE_CHECKOUT_PATH, self.translated_locale.code),
         )
         user = self.mock_repo_commit.call_args[0][1]
-        assert_equal(user.first_name, "Pontoon")
-        assert_equal(user.email, "pontoon@example.com")
+        assert user.first_name == "Pontoon"
+        assert user.email == "pontoon@example.com"
 
 
 class PullChangesTests(FakeCheckoutTestCase):
     def setUp(self):
-        super(PullChangesTests, self).setUp()
+        super().setUp()
         self.mock_repo_pull = self.patch_object(Repository, "pull")
         self.locales = self.db_project.locales.all()
 
@@ -403,7 +381,7 @@ class PullChangesTests(FakeCheckoutTestCase):
         self.mock_repo_pull.return_value = {"single_locale": "asdf"}
 
         has_changed, _ = pull_locale_repo_changes(self.db_project, self.locales)
-        assert_true(has_changed)
+        assert has_changed
 
     def test_unsure_changes(self):
         """
@@ -415,7 +393,7 @@ class PullChangesTests(FakeCheckoutTestCase):
         self.repository.save()
 
         has_changed, _ = pull_locale_repo_changes(self.db_project, self.locales)
-        assert_true(has_changed)
+        assert has_changed
 
     def test_unchanged(self):
         """
@@ -428,4 +406,4 @@ class PullChangesTests(FakeCheckoutTestCase):
         has_changed, _ = pull_locale_repo_changes(
             self.db_project, locales=self.db_project.locales.all()
         )
-        assert_false(has_changed)
+        assert not has_changed

@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from guardian.models import GroupObjectPermission
 
 from django.contrib.auth.models import User, Group, Permission
@@ -15,6 +13,7 @@ from pontoon.base.models import (
     ProjectLocale,
     TranslatedResource,
     UserProfile,
+    ProjectSlugHistory,
 )
 
 
@@ -65,13 +64,13 @@ def create_group(instance, group_name, perms, name_prefix):
     ct = ContentType.objects.get(
         app_label="base", model=instance.__class__.__name__.lower()
     )
-    group, _ = Group.objects.get_or_create(name="{} {}".format(name_prefix, group_name))
+    group, _ = Group.objects.get_or_create(name=f"{name_prefix} {group_name}")
 
     for perm_name in perms:
         perm = Permission.objects.get(content_type=ct, codename=perm_name)
         group.permissions.add(perm)
 
-        setattr(instance, "{}_group".format(group_name), group)
+        setattr(instance, f"{group_name}_group", group)
 
 
 def assign_group_permissions(instance, group_name, perms):
@@ -84,7 +83,7 @@ def assign_group_permissions(instance, group_name, perms):
 
     for perm_name in perms:
         perm = Permission.objects.get(content_type=ct, codename=perm_name)
-        group = getattr(instance, "{}_group".format(group_name))
+        group = getattr(instance, f"{group_name}_group")
         GroupObjectPermission.objects.get_or_create(
             object_pk=instance.pk, content_type=ct, group=group, permission=perm
         )
@@ -127,7 +126,7 @@ def create_project_locale_permissions_groups(sender, **kwargs):
             instance,
             "translators",
             ["can_translate_project_locale"],
-            "{}/{}".format(instance.project.slug, instance.locale.code),
+            f"{instance.project.slug}/{instance.locale.code}",
         )
     except ObjectDoesNotExist as e:
         errors.send_exception(e)
@@ -164,7 +163,8 @@ def add_locale_to_system_projects(sender, instance, created, **kwargs):
             ProjectLocale.objects.create(project=project, locale=instance)
             for resource in project.resources.all():
                 translated_resource = TranslatedResource.objects.create(
-                    resource=resource, locale=instance,
+                    resource=resource,
+                    locale=instance,
                 )
                 translated_resource.calculate_stats()
 
@@ -179,7 +179,8 @@ def add_locale_to_terminology_project(sender, instance, created, **kwargs):
         ProjectLocale.objects.create(project=project, locale=instance)
         for resource in project.resources.all():
             translated_resource = TranslatedResource.objects.create(
-                resource=resource, locale=instance,
+                resource=resource,
+                locale=instance,
             )
             translated_resource.calculate_stats()
 
@@ -206,3 +207,19 @@ def assign_project_locale_group_permissions(sender, **kwargs):
 def create_user_profile(sender, instance, created, **kwargs):
     if created:
         UserProfile.objects.create(user=instance)
+
+
+@receiver(pre_save, sender=Project)
+def create_slug_history(sender, instance, **kwargs):
+    """
+    Signal receiver that, prior to saving a Project instance, creates a ProjectSlugHistory object if the project's slug has changed.
+    """
+    if instance.pk:  # checks if instance is not a new object
+        try:
+            old_instance = sender.objects.get(pk=instance.pk)
+            if old_instance.slug != instance.slug:
+                ProjectSlugHistory.objects.create(
+                    project=instance, old_slug=old_instance.slug
+                )
+        except sender.DoesNotExist:
+            pass
